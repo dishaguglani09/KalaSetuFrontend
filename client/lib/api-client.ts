@@ -1,9 +1,24 @@
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 export const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
 
+/**
+ * Resolves a media/upload URL so it works in both the web browser and the
+ * Capacitor Android WebView.
+ *
+ * In the browser the SPA and Express share the same origin, so "/uploads/..."
+ * is fine.  Inside the Android WebView the origin is "capacitor://localhost"
+ * which has no Express server behind it, so we must prepend the explicit
+ * backend origin that was baked into VITE_API_BASE_URL.
+ */
 export function getMediaUrl(path: string | null | undefined): string {
   if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:") || path.startsWith("blob:")) {
+  // Already absolute — nothing to do
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("data:") ||
+    path.startsWith("blob:")
+  ) {
     return path;
   }
 
@@ -13,13 +28,13 @@ export function getMediaUrl(path: string | null | undefined): string {
     return `${origin}${cleanPath}`;
   }
 
+  // Web: relative path works fine
   return path;
 }
 
 function getToken(): string | null {
   return localStorage.getItem("kalasetu_token") || sessionStorage.getItem("kalasetu_token");
 }
-
 export function setToken(token: string | null): void {
   if (token) {
     localStorage.setItem("kalasetu_token", token);
