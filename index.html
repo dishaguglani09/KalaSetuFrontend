@@ -3,12 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hello world project</title>
+    <title>KalaSetu — The Artisan's Bridge</title>
+    <meta name="description" content="KalaSetu Artisan Studio — AI-powered marketplace for Indian handcraft sellers" />
   </head>
 
   <body>
     <div id="root"></div>
 
     <script type="module" src="/client/App.tsx"></script>
+
+    <!-- Service Worker registration for offline-first support -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {
+            // SW registration is best-effort; app still works without it
+          });
+        });
+      }
+    </script>
   </body>
 </html>
