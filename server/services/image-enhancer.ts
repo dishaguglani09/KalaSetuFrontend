@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
-import { Jimp } from "jimp";
 import { config } from "../config";
+import { removeBackground } from "../ml/rmbg";
 
 export interface EnhancementResult {
   status: "success" | "partial" | "failed";
@@ -13,13 +13,6 @@ export interface EnhancementResult {
 
 export const imageEnhancerService = {
   async enhanceImage(filePathOrUrl: string, filenameBase?: string): Promise<EnhancementResult> {
-    const enhancementsApplied = [
-      "Background cleanup: Shadows equalized & backdrop balanced",
-      "Lighting improvement: Exposure +6%, Contrast +12%, Color normalized",
-      "Cropping/resizing: Scaled to 1200px high-resolution e-commerce standard",
-      "E-commerce-ready formatting: Studio color profile & crisp details preserved"
-    ];
-
     try {
       let imageBuffer: Buffer;
       let originalUrl = filePathOrUrl;
@@ -42,52 +35,33 @@ export const imageEnhancerService = {
         imageBuffer = fs.readFileSync(diskPath);
       }
 
-      const img = await Jimp.read(imageBuffer);
+      // Execute RMBG-1.4 neural background removal
+      const cutout = await removeBackground(imageBuffer);
 
-      // Auto-balance brightness and contrast for craft photography
-      img.contrast(0.12);
-      img.brightness(0.06);
-
-      // Normalize color histogram for vibrant craft pigments
-      img.normalize();
-
-      // Resize if overly large for snappy web presentation
-      const width = img.bitmap.width;
-      const height = img.bitmap.height;
-      const maxDim = 1200;
-
-      if (width > maxDim || height > maxDim) {
-        if (width >= height) {
-          img.resize({ w: maxDim });
-        } else {
-          img.resize({ h: maxDim });
-        }
-      }
-
-      const safeBase = filenameBase || `img-${Date.now()}`;
-      const enhancedFilename = `enhanced-${safeBase}.jpg`;
+      const safeBase = filenameBase || `cutout-${Date.now()}`;
+      const enhancedFilename = `enhanced-cutout-${safeBase}.png`;
       const enhancedDiskPath = path.join(config.uploadDir, enhancedFilename);
 
-      await img.write(enhancedDiskPath as any);
+      // Save the transparent cutout PNG to disk
+      fs.writeFileSync(enhancedDiskPath, cutout.pngBuffer);
 
       return {
         status: "success",
         originalUrl,
         enhancedUrl: `/uploads/${enhancedFilename}`,
-        enhancementsApplied,
+        enhancementsApplied: cutout.appliedEnhancements,
         dimensions: {
-          width: img.bitmap.width,
-          height: img.bitmap.height,
+          width: cutout.width,
+          height: cutout.height,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Image enhancement pipeline error:", error);
-      // Graceful fallback keeping original
       return {
-        status: "partial",
+        status: "failed",
         originalUrl: filePathOrUrl,
         enhancedUrl: filePathOrUrl,
-        enhancementsApplied: ["Lighting corrected", "E-commerce ready"],
+        enhancementsApplied: [`Inference failed: ${error.message || "Unknown error"}`],
         dimensions: { width: 800, height: 800 },
       };
     }

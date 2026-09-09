@@ -24,6 +24,10 @@ data/*.db-journal
 uploads/*
 !uploads/.gitkeep
 
+# Pretrained ML Models
+models/
+*.onnx
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
