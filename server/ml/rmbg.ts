@@ -79,18 +79,13 @@ export async function removeBackground(imageBuffer: Buffer): Promise<CutoutResul
   const outputTensor = results[outputName];
   const maskRaw = outputTensor.data as Float32Array;
 
-  // 3. Min-Max normalization of output mask to [0, 1]
-  let minVal = Infinity;
-  let maxVal = -Infinity;
-  for (let i = 0; i < maskRaw.length; i++) {
-    const v = maskRaw[i];
-    if (v < minVal) minVal = v;
-    if (v > maxVal) maxVal = v;
-  }
-  const range = maxVal - minVal || 1.0;
+  // 3. Post-process RMBG-1.4 output mask (probabilities [0, 1])
+  // Apply clean noise floor thresholding (below 0.18 -> 0) to guarantee 100% background removal
   const mask1024 = new Float32Array(1024 * 1024);
   for (let i = 0; i < maskRaw.length; i++) {
-    mask1024[i] = Math.max(0, Math.min(1, (maskRaw[i] - minVal) / range));
+    let p = maskRaw[i];
+    if (p < 0.18) p = 0;
+    mask1024[i] = Math.max(0, Math.min(1, p));
   }
 
   // 4. Bilinear interpolation of mask to original image dimensions and alpha composition

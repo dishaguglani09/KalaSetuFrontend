@@ -175,6 +175,13 @@ export const api = {
         enhancedUrl: string;
         enhancementsApplied: string[];
         dimensions: { width: number; height: number };
+        craftAnalysis?: {
+          craftType: string;
+          craftRegion: string;
+          primaryColors: string[];
+          qualityScore: number;
+          enhancementNotes: string[];
+        };
       }>("/products/images/enhance", {
         method: "POST",
         body: JSON.stringify({ imageUrl, draftId }),
