@@ -17,8 +17,8 @@ if (!fs.existsSync(dataDir)) {
 export const config = {
   port: Number(process.env.PORT || 8080),
   jwtSecret: process.env.JWT_SECRET || "kalasetu-artisan-studio-secret-jwt-key-2026-heritage",
-  geminiApiKey: process.env.GEMINI_API_KEY,,
-  removeBgApiKey: process.env.REMOVE_BG_API_KEY,,
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  removeBgApiKey: process.env.REMOVE_BG_API_KEY,
   supabase: {
     url: process.env.SUPABASE_URL || "",
     publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Hnwfz1VfGD6koO94DheHLA_DYgw3R53",
