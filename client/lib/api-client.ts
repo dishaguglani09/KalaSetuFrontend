@@ -175,13 +175,6 @@ export const api = {
         enhancedUrl: string;
         enhancementsApplied: string[];
         dimensions: { width: number; height: number };
-        craftAnalysis?: {
-          craftType: string;
-          craftRegion: string;
-          primaryColors: string[];
-          qualityScore: number;
-          enhancementNotes: string[];
-        };
       }>("/products/images/enhance", {
         method: "POST",
         body: JSON.stringify({ imageUrl, draftId }),
@@ -190,16 +183,32 @@ export const api = {
   },
 
   voice: {
-    async transcribeAudio(audioBlob: Blob, languageHint: string = "hi", draftId?: string) {
+    async transcribeAudio(
+      audioBlob: Blob,
+      languageHint: string = "hi",
+      draftId?: string,
+      directTranscript?: string,
+      mimeType?: string
+    ) {
       const formData = new FormData();
-      formData.append("audio", audioBlob, "recording.webm");
+      const filename = mimeType?.includes("mp4")
+        ? "recording.mp4"
+        : mimeType?.includes("ogg")
+        ? "recording.ogg"
+        : mimeType?.includes("wav")
+        ? "recording.wav"
+        : "recording.webm";
+      formData.append("audio", audioBlob, filename);
       formData.append("languageHint", languageHint);
       if (draftId) formData.append("draftId", draftId);
+      if (directTranscript) formData.append("directTranscript", directTranscript);
+      if (mimeType) formData.append("mimeType", mimeType);
 
       return request<{
         transcription: string;
         detectedLanguage: string;
         languageName: string;
+        provider: string;
         message: string;
       }>("/voice/transcribe", {
         method: "POST",
@@ -225,6 +234,7 @@ export const api = {
         message: string;
         catalogue: {
           transcription: string;
+          english_translation?: string;
           product_name: string;
           category: string;
           english_description: string;

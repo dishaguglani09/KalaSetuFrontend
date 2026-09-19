@@ -2,6 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { Jimp } from "jimp";
 import { config } from "../config";
+import { removeBackground } from "../ml/rmbg";
 
 export interface CraftAnalysis {
   craftType: string;
@@ -64,7 +65,7 @@ async function readImageAsBuffer(filePathOrUrl: string): Promise<{ buffer: Buffe
  * with the background fully removed. Returns a PNG buffer with transparency.
  */
 async function removeBackgroundWithRemoveBg(imageBuffer: Buffer): Promise<Buffer> {
-  const apiKey = config.removeBgApiKey;
+  const apiKey = (config.removeBgApiKey || process.env.REMOVE_BG_API_KEY || "").trim().replace(/^["']|["']$/g, "");
   if (!apiKey) throw new Error("REMOVE_BG_API_KEY is not configured");
 
   console.log("[image-enhancer] Step 1: Removing background with Remove.bg API...");
@@ -355,8 +356,15 @@ export const imageEnhancerService = {
         bgRemovedPng = await removeBackgroundWithRemoveBg(imageBuffer);
         enhancementsApplied.push("Remove.bg: professional background removal — product cleanly isolated");
       } catch (removeBgError: any) {
-        console.error("[image-enhancer] Remove.bg failed:", removeBgError.message);
-        throw new Error(`Background removal failed: ${removeBgError.message}`);
+        console.warn("[image-enhancer] Remove.bg API call failed:", removeBgError.message);
+        try {
+          console.log("[image-enhancer] Falling back to neural background removal (RMBG-1.4)...");
+          const cutout = await removeBackground(imageBuffer);
+          bgRemovedPng = cutout.pngBuffer;
+          enhancementsApplied.push("Neural AI (RMBG-1.4): background cleanly removed");
+        } catch (rmbgError: any) {
+          throw new Error(`Background removal failed: ${removeBgError.message}`);
+        }
       }
 
       // Composite the cutout onto a professional white studio background

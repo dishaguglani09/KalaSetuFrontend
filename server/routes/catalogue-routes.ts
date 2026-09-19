@@ -34,12 +34,6 @@ catalogueRouter.post(
         transcription,
         language,
         imageUrl,
-        existingName,
-        existingCategory,
-        materials,
-        craftOrigin,
-        sellerState: resolvedState,
-        sellerCity: resolvedCity,
       });
 
       // Save into draft if provided
@@ -76,6 +70,53 @@ catalogueRouter.post(
     } catch (error: any) {
       console.error("Auto-catalogue generation error:", error);
       res.status(500).json({ error: error.message || "Failed to generate AI catalogue" });
+    }
+  }
+);
+
+// Extract Craft Story from complete voice transcript (Step 5: Craft Story)
+catalogueRouter.post(
+  "/craft-story",
+  requireSellerAuth,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const sellerId = req.seller!.id;
+      const { transcription, language, draftId } = req.body;
+
+      if (!transcription || !transcription.trim()) {
+        res.status(400).json({ error: "Voice transcription is required to extract craft story" });
+        return;
+      }
+
+      const craftStory = await geminiService.extractCraftStory({
+        transcription,
+        language,
+      });
+
+      if (draftId) {
+        const materialsList = craftStory.materialsUsed
+          ? craftStory.materialsUsed.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
+
+        productRepository.upsertDraft({
+          id: draftId,
+          seller_id: sellerId,
+          state: craftStory.state,
+          city: craftStory.cityRegion,
+          craft_tradition: craftStory.craftTradition,
+          technique: craftStory.technique,
+          cultural_story: craftStory.culturalHeritageStory,
+          materials_json: JSON.stringify(materialsList),
+        });
+      }
+
+      res.json({
+        message: "Craft story extracted successfully",
+        craftStory,
+      });
+    } catch (error: any) {
+      console.error("Craft story extraction error:", error);
+      res.status(500).json({ error: error.message || "Failed to extract craft story" });
     }
   }
 );

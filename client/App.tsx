@@ -4,15 +4,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
-  ArrowRight, Bell, BookOpen, Box, Check, ChevronRight, CircleHelp, CloudUpload,
+  ArrowRight, ArrowLeft, Bell, BookOpen, Box, Check, ChevronRight, CircleHelp, CloudUpload,
   Crown, Home, Image as ImageIcon, Languages, Leaf, Lightbulb, LogOut, Menu, Mic,
   MoreHorizontal, Package, Palette, PenLine, Plus, Search, Settings, Share2, Sparkles,
   Store, Tag, TrendingUp, Upload, UserRound, WandSparkles, X, IndianRupee, Trash2, CheckCircle2, Copy,
-  Camera
+  Camera, Square, AlertCircle, Sliders, Mail, RefreshCw
 } from "lucide-react";
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { api, setToken } from "./lib/api-client";
+import { supabase, isSupabaseConfigured } from "./lib/supabase";
+import { AuthCallback } from "./pages/AuthCallback";
 import { OfflineSyncBanner } from "./components/OfflineSyncBanner";
+import { DynamicPricingScreen } from "./components/DynamicPricingScreen";
 import { useNetworkStatus } from "./lib/network-status";
 import { processSyncQueue, queueOperation } from "./lib/sync-engine";
 import {
@@ -143,6 +146,7 @@ interface UserProfile {
   bio: string;
   avatar_url?: string;
   preferred_language: string;
+  email_verified?: boolean;
 }
 
 interface ProductDraft {
@@ -151,6 +155,8 @@ interface ProductDraft {
   category: string;
   /** Raw verbatim transcription from the artisan's voice. Never overwrite with descriptions. */
   transcription: string;
+  /** Accurate direct English translation of the spoken transcription. */
+  english_translation?: string;
   /** English description translated/structured from the transcription. */
   description: string;
   translations: Record<string, string>;
@@ -167,6 +173,18 @@ interface ProductDraft {
   recommended_price: number;
   price_range_min: number;
   price_range_max: number;
+  production_cost?: number;
+  minimum_fair_price?: number;
+  premium_price?: number;
+  artisan_profit?: number;
+  margin_percent?: number;
+  material_cost?: number;
+  labour_hours?: number;
+  hourly_rate?: number;
+  packaging_cost?: number;
+  logistics_cost?: number;
+  complexity?: "simple" | "medium" | "intricate" | "masterpiece";
+  desired_margin_percent?: number;
   confidence_score: number;
   pricing_breakdown: Array<{ label: string; amount: string; percent: string }>;
   image_url: string;
@@ -182,43 +200,45 @@ interface ProductDraft {
 const defaultDraft = (): ProductDraft => ({
   transcription: "",
   id: `draft-${Date.now()}`,
-  name: "Blue Pottery Vase",
-  category: "Home Decor",
-  description: "A hand-painted Blue Pottery vase inspired by the quiet gardens of Jaipur. Each floral detail is painted by hand using a traditional turquoise palette.",
-  translations: {
-    en: "A hand-painted Blue Pottery vase inspired by the quiet gardens of Jaipur.",
-    hi: "जयपुर के शांत बगीचों से प्रेरित हाथ से चित्रित नीली मिट्टी का फूलदान।",
-    pa: "ਜੈਪੁਰ ਦੇ ਸ਼ਾਂਤ ਬਾਗਾਂ ਤੋਂ ਪ੍ਰੇਰਿਤ ਹੱਥ ਨਾਲ ਪੇਂਟ ਕੀਤਾ ਨੀਲੀ ਮਿੱਟੀ ਦਾ ਗੁਲਦਸਤਾ।",
-    ta: "ஜெய்ப்பூரின் அமைதியான தோட்டங்களால் ஈர்க்கப்பட்ட கையால் வர்ணம் பூசப்பட்ட நீல மண்பாண்ட குவளை.",
-    te: "జైపూర్ ప్రశాంతమైన తోటల నుండి ప్రేరణ పొందిన చేతితో గీసిన నీలి కుండల వాసే."
-  },
-  materials: ["Quartz", "Glass", "Natural pigments", "Multani mitti"],
-  dimensions: "12 x 6 inches",
-  craft_origin: "Jaipur, Rajasthan",
-  state: "Rajasthan",
-  city: "Jaipur",
-  craft_tradition: "Jaipur Blue Pottery",
-  technique: "Hand painting & glazing",
-  cultural_story: "In the lanes of Jaipur, blue pottery has been shaped by patient hands for generations. Meera's floral language is a love letter to the courtyards where she first learned to paint.",
-  tags: ["blue pottery", "jaipur", "handmade", "heritage"],
-  price: 2450,
-  recommended_price: 2450,
-  price_range_min: 2100,
-  price_range_max: 2800,
-  confidence_score: 92,
-  pricing_breakdown: [
-    { label: "Material cost", amount: "₹680", percent: "28%" },
-    { label: "Labour cost", amount: "₹1,120", percent: "46%" },
-    { label: "Market trend", amount: "₹650", percent: "26%" }
-  ],
+  name: "Untitled Craft",
+  category: "",
+  description: "",
+  translations: { en: "", hi: "", pa: "", ta: "", te: "" },
+  materials: [],
+  dimensions: "",
+  craft_origin: "",
+  state: "",
+  city: "",
+  craft_tradition: "",
+  technique: "",
+  cultural_story: "",
+  tags: [],
+  price: 0,
+  recommended_price: 0,
+  price_range_min: 0,
+  price_range_max: 0,
+  production_cost: 0,
+  minimum_fair_price: 0,
+  premium_price: 0,
+  artisan_profit: 0,
+  margin_percent: 25,
+  material_cost: 680,
+  labour_hours: 8,
+  hourly_rate: 140,
+  packaging_cost: 80,
+  logistics_cost: 120,
+  complexity: "medium",
+  desired_margin_percent: 25,
+  confidence_score: 0,
+  pricing_breakdown: [],
   image_url: "",
   enhanced_image_url: "",
-  similarity_score: 8,
-  similarity_status: "No significant similarity detected",
-  similarity_notes: "Your Blue Pottery piece has a distinct visual identity. It is ready to stand on its own.",
+  similarity_score: 0,
+  similarity_status: "",
+  similarity_notes: "",
   status: "DRAFT",
-  marketplaces: ["ONDC", "B2B buyers", "Government marketplaces", "Other marketplaces"],
-  listing_id: "KS-BP-240924"
+  marketplaces: ["ONDC"],
+  listing_id: ""
 });
 
 // Contexts
@@ -229,11 +249,12 @@ const LanguageContext = createContext<{ language: Language; setLanguage: (langua
 const SessionContext = createContext<{
   session: boolean;
   user: UserProfile | null;
+  emailVerified: boolean;
   startSession: (token: string, user: UserProfile) => void;
   clearSession: () => void;
   loading: boolean;
 }>({
-  session: false, user: null, startSession: () => {}, clearSession: () => {}, loading: true
+  session: false, user: null, emailVerified: true, startSession: () => {}, clearSession: () => {}, loading: true
 });
 
 const ProductDraftContext = createContext<{
@@ -270,6 +291,7 @@ function useI18n() { return useContext(LanguageContext); }
 function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [emailVerified, setEmailVerified] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -279,6 +301,7 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
         .then(res => {
           setUser(res.user);
           setSession(true);
+          setEmailVerified(res.user.email_verified !== false);
           saveProfileLocally(res.user as any).catch(() => {});
         })
         .catch(async () => {
@@ -287,15 +310,33 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
           if (local && (local.name || local.id)) {
             setUser(local as unknown as UserProfile);
             setSession(true);
+            setEmailVerified(true);
           } else {
             setToken(null);
             setUser(null);
             setSession(false);
+            setEmailVerified(false);
           }
         })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
+    }
+
+    // Listen to Supabase Auth state changes if Supabase is configured
+    if (isSupabaseConfigured()) {
+      const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT") {
+          setToken(null);
+          setUser(null);
+          setSession(false);
+          setEmailVerified(false);
+        }
+      });
+
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
     }
   }, []);
 
@@ -303,18 +344,23 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
     setToken(token);
     setUser(userData);
     setSession(true);
+    setEmailVerified(userData.email_verified !== false);
     saveProfileLocally(userData as any).catch(() => {});
   };
 
   const clearSession = () => {
+    if (isSupabaseConfigured()) {
+      supabase.auth.signOut().catch(() => {});
+    }
     api.auth.logout().catch(() => {});
     setToken(null);
     setUser(null);
     setSession(false);
+    setEmailVerified(false);
   };
 
   return (
-    <SessionContext.Provider value={{ session, user, startSession, clearSession, loading }}>
+    <SessionContext.Provider value={{ session, user, emailVerified, startSession, clearSession, loading }}>
       {children}
     </SessionContext.Provider>
   );
@@ -322,11 +368,88 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
 
 function useSession() { return useContext(SessionContext); }
 
+function UnverifiedScreen({ userEmail, onLogout }: { userEmail: string; onLogout: () => void }) {
+  const [resending, setResending] = useState(false);
+  const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleResend = async () => {
+    if (!userEmail || !isSupabaseConfigured()) return;
+    setResending(true);
+    setNotice(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: userEmail.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      setNotice({ type: "success", text: `Verification link resent to ${userEmail}. Please check your inbox and spam folder.` });
+    } catch (err: any) {
+      setNotice({ type: "error", text: err.message || "Failed to resend verification email. Please try again in a few moments." });
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#9C0000] text-white flex flex-col items-center justify-center p-5 relative overflow-hidden">
+      <div className="absolute inset-0 paisley-bg opacity-30" />
+      <div className="relative z-10 w-full max-w-md bg-[#FFFDF8] text-[#24130F] rounded-3xl p-8 shadow-2xl border border-[#E9DDBA] text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF2C9] text-[#9C0000] mb-5">
+          <Mail size={28} />
+        </div>
+        <h2 className="font-serif text-2xl text-[#2C1710]">Email Verification Required</h2>
+        <p className="mt-3 text-sm text-[#836A5F] leading-6">
+          Access to this dashboard requires a verified email address. Please click the confirmation link sent to <strong>{userEmail || "your email"}</strong>.
+        </p>
+        {notice && (
+          <div className={`mt-4 p-3 rounded-xl text-xs font-medium ${notice.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+            {notice.text}
+          </div>
+        )}
+        <button
+          onClick={handleResend}
+          disabled={resending || !userEmail}
+          className="mt-6 w-full rounded-xl bg-[#9C0000] py-3 text-sm font-semibold text-[#FFE7A6] hover:bg-[#750000] disabled:opacity-60 transition"
+        >
+          {resending ? "Sending..." : "Resend Verification Email"}
+        </button>
+        <button
+          onClick={onLogout}
+          className="mt-3 w-full rounded-xl border border-[#C5A66D] py-2.5 text-xs font-semibold text-[#66493E] hover:bg-[#FFF2C9] transition"
+        >
+          Log out / Switch account
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ProductDraftProvider({ children }: { children: React.ReactNode }) {
   const [draft, setDraft] = useState<ProductDraft>(() => {
     const saved = localStorage.getItem("kalasetu-active-draft");
     if (saved) {
-      try { return JSON.parse(saved); } catch {}
+      try {
+        const parsed = JSON.parse(saved);
+        // Discard stale mock draft — if it has ANY old Blue Pottery mock data,
+        // clear it completely so the user gets a fresh draft for their real product.
+        const isStaleMock =
+          parsed.description?.includes("Blue Pottery") ||
+          parsed.name?.includes("Blue Pottery") ||
+          parsed.transcription?.includes("Blue Pottery") ||
+          parsed.description?.includes("quiet gardens") ||
+          parsed.transcription?.includes("quiet gardens") ||
+          parsed.cultural_story?.includes("quiet gardens") ||
+          parsed.cultural_story?.includes("Meera's floral language") ||
+          parsed.description?.includes("traditional turquoise palette");
+        if (isStaleMock) {
+          localStorage.removeItem("kalasetu-active-draft");
+          return defaultDraft();
+        }
+        return parsed;
+      } catch {}
     }
     return defaultDraft();
   });
@@ -383,6 +506,18 @@ function ProductDraftProvider({ children }: { children: React.ReactNode }) {
       recommended_price: product.recommended_price || product.price,
       price_range_min: product.price_range_min || 0,
       price_range_max: product.price_range_max || 0,
+      production_cost: product.production_cost || 0,
+      minimum_fair_price: product.minimum_fair_price || product.price_range_min || 0,
+      premium_price: product.premium_price || product.price_range_max || 0,
+      artisan_profit: product.artisan_profit || 0,
+      margin_percent: product.margin_percent || 25,
+      material_cost: product.material_cost !== undefined ? product.material_cost : 680,
+      labour_hours: product.labour_hours !== undefined ? product.labour_hours : 8,
+      hourly_rate: product.hourly_rate !== undefined ? product.hourly_rate : 140,
+      packaging_cost: product.packaging_cost !== undefined ? product.packaging_cost : 80,
+      logistics_cost: product.logistics_cost !== undefined ? product.logistics_cost : 120,
+      complexity: product.complexity || "medium",
+      desired_margin_percent: product.desired_margin_percent || 25,
       confidence_score: product.confidence_score || 90,
       pricing_breakdown: product.pricing_breakdown || [],
       image_url: product.image_url || "",
@@ -532,9 +667,9 @@ function Landing() {
 }
 
 function Login() {
-  const { startSession, session } = useSession();
+  const { startSession, session, emailVerified } = useSession();
   const navigate = useNavigate();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
@@ -542,40 +677,204 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Already logged in — go straight to dashboard
+  // Email verification states
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendNotice, setResendNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Already logged in with confirmed email — go straight to dashboard
   useEffect(() => {
-    if (session) navigate("/dashboard", { replace: true });
-  }, [session, navigate]);
+    if (session && emailVerified) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [session, emailVerified, navigate]);
+
+  const getRedirectUrl = () => {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return `${window.location.origin}/auth/callback`;
+    }
+    return "http://localhost:8080/auth/callback";
+  };
+
+  const handleResendVerification = async (targetEmail: string) => {
+    if (!targetEmail || !isSupabaseConfigured()) return;
+    setResendLoading(true);
+    setResendNotice(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: targetEmail.trim(),
+        options: {
+          emailRedirectTo: getRedirectUrl(),
+        },
+      });
+      if (error) throw error;
+      setResendNotice({
+        type: "success",
+        text: `Verification link resent to ${targetEmail}. Please check your inbox and spam folder.`,
+      });
+    } catch (err: any) {
+      setResendNotice({
+        type: "error",
+        text: err.message || "Failed to resend verification email. Please try again in a few moments.",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   const handleAuth = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError("");
+    setUnverifiedEmail(null);
+    setResendNotice(null);
     setLoading(true);
+
+    const emailTrimmed = email.trim();
+    const passTrimmed = password.trim();
 
     try {
       if (isRegister) {
+        // Field validations
         if (!name.trim()) {
           setError("Please enter your artisan name");
           setLoading(false);
           return;
         }
-        const res = await api.auth.register({
-          name: name.trim(),
-          phone: phone.trim(),
-          password: password.trim(),
-          craft_tradition: craft || "Handcrafted Art",
-          state: "Rajasthan",
-          city: "Jaipur"
+        if (!craft.trim()) {
+          setError("Please enter your craft tradition");
+          setLoading(false);
+          return;
+        }
+        if (!emailTrimmed || !emailTrimmed.includes("@")) {
+          setError("Please enter a valid email address");
+          setLoading(false);
+          return;
+        }
+        if (!passTrimmed || passTrimmed.length < 6) {
+          setError("Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+
+        // Check if account already exists in KalaSetu database
+        try {
+          const checkRes = await api.auth.checkEmail(emailTrimmed);
+          if (checkRes.exists) {
+            setError("Account already exists. Please sign in.");
+            setLoading(false);
+            return;
+          }
+        } catch {}
+
+        if (!isSupabaseConfigured()) {
+          setError("Supabase authentication is not configured in your environment.");
+          setLoading(false);
+          return;
+        }
+
+        // 2. Create a NEW Supabase Auth account using signUp()
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: emailTrimmed,
+          password: passTrimmed,
+          options: {
+            data: {
+              name: name.trim(),
+              craft_tradition: craft.trim(),
+              role: "seller",
+            },
+            emailRedirectTo: getRedirectUrl(),
+          },
         });
-        startSession(res.token, res.user);
-        navigate("/dashboard", { replace: true });
+
+        if (signUpError) {
+          const errMsg = (signUpError.message || "").toLowerCase();
+          if (errMsg.includes("already registered") || errMsg.includes("already exists") || signUpError.status === 422) {
+            setError("Account already exists. Please sign in.");
+            setLoading(false);
+            return;
+          }
+          throw signUpError;
+        }
+
+        // Supabase returns an empty identities array when user already exists (and email confirmation is enabled)
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          setError("Account already exists. Please sign in.");
+          setLoading(false);
+          return;
+        }
+
+        // 3. DO NOT automatically log the user in.
+        // Explicitly clear Supabase session so user remains unauthenticated
+        try {
+          await supabase.auth.signOut();
+          localStorage.removeItem("kalasetu-supabase-auth");
+        } catch {}
+
+        // 4 & 5. Show: "Verification email sent. Please check your email."
+        setSentEmail(emailTrimmed);
+        setVerificationSent(true);
+        setLoading(false);
+        return;
       } else {
-        const res = await api.auth.login(phone.trim(), password.trim());
+        // Sign In
+        if (!emailTrimmed || !emailTrimmed.includes("@")) {
+          setError("Please enter your email address");
+          setLoading(false);
+          return;
+        }
+        if (!passTrimmed) {
+          setError("Please enter your password");
+          setLoading(false);
+          return;
+        }
+
+        if (isSupabaseConfigured()) {
+          const { data, error: signInError } = await supabase.auth.signInWithPassword({
+            email: emailTrimmed,
+            password: passTrimmed,
+          });
+
+          if (signInError) {
+            if (signInError.message.toLowerCase().includes("email not confirmed")) {
+              setUnverifiedEmail(emailTrimmed);
+              setError("Your email address is not verified yet. Please check your inbox or resend the verification link.");
+              setLoading(false);
+              return;
+            }
+            throw signInError;
+          }
+
+          if (data?.user) {
+            const isConfirmed = Boolean(data.user.email_confirmed_at || data.user.confirmed_at);
+            if (!isConfirmed) {
+              setUnverifiedEmail(emailTrimmed);
+              setError("Your email address is not verified yet. Please check your inbox or click below to resend the verification email.");
+              try {
+                await supabase.auth.signOut();
+                localStorage.removeItem("kalasetu-supabase-auth");
+              } catch {}
+              setLoading(false);
+              return;
+            }
+
+            // Sync verified user and open dashboard only after confirmed email
+            const syncRes = await api.auth.syncSupabase(data.user);
+            startSession(syncRes.token, { ...syncRes.user, email_verified: true });
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+        }
+
+        // Fallback login
+        const res = await api.auth.login(emailTrimmed, passTrimmed);
         startSession(res.token, res.user);
         navigate("/dashboard", { replace: true });
       }
     } catch (err: any) {
-      setError(err.message || "Failed to sign in. Please verify your details.");
+      setError(err.message || "Failed to authenticate. Please verify your details.");
     } finally {
       setLoading(false);
     }
@@ -592,99 +891,166 @@ function Login() {
         </div>
         <p className="text-xs text-[#DDAFA2]">© 2026 KalaSetu · Crafted for India</p>
       </div>
+
       <div className="relative flex w-full items-center justify-center bg-[#FFE7A6] px-5 py-12 text-[#210707] lg:max-w-[560px]">
         <div className="absolute inset-0 mandala-bg opacity-30" />
         <div className="relative w-full max-w-sm">
           <div className="mb-5 flex justify-end"><LanguageSelector /></div>
           <div className="mb-8 lg:hidden"><Logo /></div>
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[.18em] text-[#9C0000]">Seller studio</p>
-            <h2 className="font-serif text-3xl md:text-4xl">{isRegister ? "Create Studio" : "Welcome back."}</h2>
-            <p className="mt-2 text-xs md:text-sm text-[#6E5148]">
-              {isRegister ? "Register your craft to take your creations to the world." : "Sign in to continue your artisan journey."}
-            </p>
-          </div>
 
-          {error && (
-            <div className="mb-4 rounded-xl border border-[#9C0000]/30 bg-[#FBE8E2] p-3 text-xs font-medium text-[#9C0000]">
-              {error}
+          {/* Verification Sent Screen */}
+          {verificationSent ? (
+            <div className="rounded-3xl border border-[#C5A66D] bg-white/90 p-7 text-center shadow-lg">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF2C9] text-[#9C0000] mb-4">
+                <Mail size={28} />
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9C0000]">Email Verification</p>
+              <h2 className="mt-2 font-serif text-2xl font-bold text-[#24130F]">Verification email sent. Please check your email.</h2>
+              <p className="mt-3 text-xs text-[#6E5148] leading-5">
+                We've sent a verification link to <strong className="text-[#24130F]">{sentEmail}</strong>.
+              </p>
+              <p className="mt-2 text-xs text-[#6E5148] leading-5">
+                Please check your email and click the verification link to activate your artisan account.
+              </p>
+
+              {resendNotice && (
+                <div className={`mt-4 rounded-xl p-3 text-xs font-medium ${resendNotice.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+                  {resendNotice.text}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleResendVerification(sentEmail)}
+                disabled={resendLoading}
+                className="mt-6 w-full rounded-xl bg-[#9C0000] py-3 text-xs font-semibold text-[#FFE7A6] hover:bg-[#750000] disabled:opacity-60 transition"
+              >
+                {resendLoading ? "Resending..." : "Resend Verification Email"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setVerificationSent(false); setIsRegister(false); setError(""); }}
+                className="mt-3 w-full rounded-xl border border-[#C5A66D] py-2.5 text-xs font-semibold text-[#66493E] hover:bg-[#FFF2C9] transition"
+              >
+                Go to Sign In
+              </button>
             </div>
-          )}
+          ) : (
+            <>
+              <div className="mb-6">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[.18em] text-[#9C0000]">Seller studio</p>
+                <h2 className="font-serif text-3xl md:text-4xl">{isRegister ? "Create Studio" : "Welcome back."}</h2>
+                <p className="mt-2 text-xs md:text-sm text-[#6E5148]">
+                  {isRegister ? "Register your craft with email & password to begin." : "Sign in with your email to continue your artisan journey."}
+                </p>
+              </div>
 
-          <form onSubmit={handleAuth} className="space-y-3">
-            {isRegister && (
-              <>
+              {error && (
+                <div className="mb-4 rounded-xl border border-[#9C0000]/30 bg-[#FBE8E2] p-3.5 text-xs font-medium text-[#9C0000]">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <div className="flex-1">{error}</div>
+                  </div>
+
+                  {unverifiedEmail && (
+                    <div className="mt-3 pt-2.5 border-t border-[#9C0000]/20">
+                      <button
+                        type="button"
+                        onClick={() => handleResendVerification(unverifiedEmail)}
+                        disabled={resendLoading}
+                        className="inline-flex items-center gap-1.5 font-bold text-[#750000] hover:underline"
+                      >
+                        <RefreshCw size={13} className={resendLoading ? "animate-spin" : ""} />
+                        {resendLoading ? "Sending link..." : "Resend Verification Email"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {resendNotice && (
+                <div className={`mb-4 rounded-xl p-3 text-xs font-medium ${resendNotice.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+                  {resendNotice.text}
+                </div>
+              )}
+
+              <form onSubmit={handleAuth} className="space-y-3">
+                {isRegister && (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium">Artisan Name</label>
+                      <input
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="e.g. Meera Sharma"
+                        className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium">Craft Tradition</label>
+                      <input
+                        value={craft}
+                        onChange={e => setCraft(e.target.value)}
+                        placeholder="e.g. Jaipur Blue Pottery"
+                        className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Artisan Name</label>
+                  <label className="mb-1 block text-xs font-medium">Email</label>
                   <input
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="e.g. Meera Sharma"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="e.g. artisan@gmail.com"
+                    type="email"
                     className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
                     required
                   />
                 </div>
+
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Craft Tradition</label>
+                  <label className="mb-1 block text-xs font-medium">Password</label>
                   <input
-                    value={craft}
-                    onChange={e => setCraft(e.target.value)}
-                    placeholder="e.g. Jaipur Blue Pottery"
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Enter password (at least 6 characters)"
                     className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
+                    required
                   />
                 </div>
-              </>
-            )}
 
-            <div>
-              <label className="mb-1 block text-xs font-medium">Mobile Number / Email</label>
-              <div className="flex rounded-xl border border-[#C5A66D] bg-white/70 p-1">
-                <span className="flex items-center px-2 text-xs text-[#775c52]">+91</span>
-                <input
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="e.g. 9876543210"
-                  className="w-full bg-transparent px-2 py-2 text-sm outline-none"
-                  required
-                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-4 w-full rounded-xl bg-[#9C0000] py-3 text-sm font-semibold text-[#FFE7A6] transition hover:bg-[#750000] disabled:opacity-60"
+                >
+                  {loading ? "Authenticating..." : (isRegister ? "Create Artisan Account" : "Sign In")} <ArrowRight className="ml-1 inline" size={15} />
+                </button>
+              </form>
+
+              <div className="my-6 flex items-center gap-3 text-xs text-[#99766A]">
+                <span className="h-px flex-1 bg-[#CDB47D]" />or<span className="h-px flex-1 bg-[#CDB47D]" />
               </div>
-            </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium">Password / Studio PIN</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Enter password (demo: artisan123)"
-                className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
-              />
-            </div>
+              <button
+                type="button"
+                onClick={() => { setIsRegister(!isRegister); setError(""); setUnverifiedEmail(null); setResendNotice(null); }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#C5A66D] bg-white/40 py-2.5 text-xs font-semibold text-[#66493E] hover:bg-white/60"
+              >
+                {isRegister ? "Already registered? Sign In" : "New artisan? Register your studio"}
+              </button>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-4 w-full rounded-xl bg-[#9C0000] py-3 text-sm font-semibold text-[#FFE7A6] transition hover:bg-[#750000] disabled:opacity-60"
-            >
-              {loading ? "Authenticating..." : (isRegister ? "Create Artisan Account" : "Continue")} <ArrowRight className="ml-1 inline" size={15} />
-            </button>
-          </form>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-[#99766A]">
-            <span className="h-px flex-1 bg-[#CDB47D]" />or<span className="h-px flex-1 bg-[#CDB47D]" />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => { setIsRegister(!isRegister); setError(""); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#C5A66D] bg-white/40 py-2.5 text-xs font-semibold text-[#66493E] hover:bg-white/60"
-          >
-            {isRegister ? "Already registered? Sign In" : "New artisan? Register your studio"}
-          </button>
-
-          <p className="mt-6 text-center text-[11px] text-[#87685E]">
-            By continuing, you agree to KalaSetu's <u>Terms</u> and <u>Privacy Policy</u>.
-          </p>
+              <p className="mt-6 text-center text-[11px] text-[#87685E]">
+                By continuing, you agree to KalaSetu's <u>Terms</u> and <u>Privacy Policy</u>.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -693,7 +1059,7 @@ function Login() {
 
 function Shell() {
   const { tr } = useI18n();
-  const { session, user, clearSession, loading } = useSession();
+  const { session, user, clearSession, loading, emailVerified } = useSession();
   const { isOnline } = useNetworkStatus();
   const location = useLocation();
   const navigate = useNavigate();
@@ -712,6 +1078,11 @@ function Shell() {
       processSyncQueue().catch(() => {});
     }
   }, [isOnline]);
+
+  // Block dashboard access if user email is not verified
+  if (session && user && user.role === "seller" && !emailVerified) {
+    return <UnverifiedScreen userEmail={user?.email || ""} onLogout={() => { clearSession(); navigate("/"); }} />;
+  }
 
   const initials = user?.name ? user.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "MS";
 
@@ -978,6 +1349,39 @@ function FlowHeader({ current }: { current: string }) {
   );
 }
 
+const VOICE_LANGUAGES: Record<string, { name: string; native: string; sample: string; sampleDesc: string }> = {
+  hi: {
+    name: "Hindi",
+    native: "हिन्दी",
+    sample: "यह मिट्टी का दीया है, हमने इसे हाथ से चाक पर बनाया है और प्राकृतिक रंगों से सजाया है।",
+    sampleDesc: "Handcrafted Clay Diya"
+  },
+  pa: {
+    name: "Punjabi",
+    native: "ਪੰਜਾਬੀ",
+    sample: "ਇਹ ਲੱਕੜ ਦੀ ਬਣੀ ਹੋਈ ਸੁੰਦਰ ਚੰਗੇਰ ਹੈ ਜਿਸ ਉੱਤੇ ਹੱਥੀਂ ਨੱਕਾਸ਼ੀ ਕੀਤੀ ਗਈ ਹੈ।",
+    sampleDesc: "Hand-carved Wooden Changer"
+  },
+  ta: {
+    name: "Tamil",
+    native: "தமிழ்",
+    sample: "இது கையால் நெய்யப்பட்ட தூய பருத்தி புடவை, பாரம்பரிய இயற்கை சாயம் கொண்டு செய்யப்பட்டது.",
+    sampleDesc: "Handwoven Pure Cotton Saree"
+  },
+  te: {
+    name: "Telugu",
+    native: "తెలుగు",
+    sample: "ఇది చేతితో తయారు చేసిన మట్టి కుండ, పచ్చని సాంప్రదాయ డిజైన్లతో అలంకరించబడింది.",
+    sampleDesc: "Handmade Clay Pot"
+  },
+  en: {
+    name: "English",
+    native: "English",
+    sample: "This is a handcrafted wooden jewelry box with brass inlays, made by traditional artisans.",
+    sampleDesc: "Handcrafted Jewelry Box"
+  }
+};
+
 function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "catalogue" | "story" | "pricing" | "similarity" | "review" | "linkage" }) {
   const { tr } = useI18n();
   const { draft, updateDraft } = useProductDraft();
@@ -992,6 +1396,113 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [approved, setApproved] = useState(false);
   const [selectedMarkets, setSelectedMarkets] = useState<string[]>(draft.marketplaces || ["ONDC", "B2B buyers"]);
+
+  // Step 3 Voice & Multilingual Auto-Cataloguer state
+  const [whisperTranscript, setWhisperTranscript] = useState<string>(draft.transcription || "");
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [transcribingVoice, setTranscribingVoice] = useState(false);
+  const [generatingEnglishDesc, setGeneratingEnglishDesc] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [englishDescPreview, setEnglishDescPreview] = useState<string | null>(null);
+
+  // Sarvam TTS Read-Back State
+  const [ttsAudioCache, setTtsAudioCache] = useState<Record<string, string>>({});
+  const [loadingTts, setLoadingTts] = useState<boolean>(false);
+  const [ttsError, setTtsError] = useState<string | null>(null);
+  const [playingTts, setPlayingTts] = useState<boolean>(false);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleListenTts = async (textToRead: string) => {
+    if (!textToRead || !textToRead.trim()) return;
+    const cleanText = textToRead.trim();
+    const cacheKey = `${voiceLang}:${cleanText}`;
+
+    setTtsError(null);
+
+    // If audio is currently playing, allow stopping it
+    if (playingTts && ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.currentTime = 0;
+      setPlayingTts(false);
+      return;
+    }
+
+    let audioBase64 = ttsAudioCache[cacheKey];
+
+    if (!audioBase64) {
+      setLoadingTts(true);
+      try {
+        const response = await fetch("/api/voice/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: cleanText, targetLanguage: voiceLang }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "Voice playback failed. Please try again.");
+        }
+
+        const data = await response.json();
+        if (!data.audioBase64) {
+          throw new Error("Voice playback failed. Please try again.");
+        }
+
+        audioBase64 = data.audioBase64;
+        setTtsAudioCache(prev => ({ ...prev, [cacheKey]: audioBase64 }));
+      } catch (err: any) {
+        console.error("TTS Listen error:", err);
+        setTtsError(err.message || "Voice playback failed. Please try again.");
+        setLoadingTts(false);
+        return;
+      } finally {
+        setLoadingTts(false);
+      }
+    }
+
+    try {
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+      }
+      const audio = new Audio(`data:audio/wav;base64,${audioBase64}`);
+      ttsAudioRef.current = audio;
+      setPlayingTts(true);
+
+      audio.onended = () => {
+        setPlayingTts(false);
+      };
+      audio.onerror = () => {
+        setPlayingTts(false);
+        setTtsError("Voice playback failed. Please try again.");
+      };
+
+      await audio.play();
+    } catch (playErr) {
+      console.error("Audio playback execution error:", playErr);
+      setPlayingTts(false);
+      setTtsError("Voice playback failed. Please try again.");
+    }
+  };
+
+  // Step 4 Auto-Catalogue state
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+
+  // Step 5 Craft Story state (step:5__(craft story))
+  const [craftStoryJson, setCraftStoryJson] = useState<{
+    state: string;
+    cityRegion: string;
+    craftTradition: string;
+    technique: string;
+    materialsUsed: string;
+    culturalHeritageStory: string;
+  } | null>(null);
+  const [extractingCraftStory, setExtractingCraftStory] = useState(false);
+  const [craftStoryError, setCraftStoryError] = useState<string | null>(null);
+  const [showCraftStoryJson, setShowCraftStoryJson] = useState(true);
+
+  const recordingTimerRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<any>(null);
+  const speechTextRef = useRef<string>("");
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -1090,25 +1601,20 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
     }
   };
 
-  // Step 4: Auto-run catalogue generation if not generated
+  // Step 4: Auto-run catalogue generation if not generated (only when there IS a real transcript)
   useEffect(() => {
-    if (step === "catalogue" && (!draft.cultural_story || draft.name === "Untitled Craft")) {
+    if (step === "catalogue" && draft.transcription && (!draft.description || draft.name === "Untitled Craft")) {
       setProcessing(true);
+      setCatalogueError(null);
       api.catalogue.generate({
         draftId: draft.id,
-        // Pass the RAW transcription — never description
+        // Pass the CURRENT transcription ONLY
         transcription: draft.transcription,
-        language: voiceLang === "hi" ? "Hindi" : voiceLang === "pa" ? "Punjabi" : voiceLang === "ta" ? "Tamil" : voiceLang === "te" ? "Telugu" : "English",
+        language: VOICE_LANGUAGES[voiceLang]?.name || "Hindi",
         imageUrl: draft.enhanced_image_url || draft.image_url,
-        existingName: draft.name !== "Blue Pottery Vase" ? draft.name : "",
-        existingCategory: draft.category !== "Home Decor" ? draft.category : "",
       })
         .then(res => {
           const c = res.catalogue;
-          // Map fields correctly:
-          // c.transcription → draft.transcription (preserve original voice)
-          // c.english_description → draft.description
-          // c.regional_description → draft.translations[voiceLang]
           const langCode = voiceLang;
           const updatedTranslations = {
             ...(c.translations || {}),
@@ -1116,8 +1622,9 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
           };
           updateDraft({
             transcription: c.transcription || draft.transcription,
-            name: c.product_name || draft.name,
-            category: c.category || draft.category,
+            english_translation: c.english_translation || draft.english_translation || "",
+            name: c.product_name || "Untitled Craft",
+            category: c.category || "",
             description: c.english_description || "",
             translations: updatedTranslations,
             materials: c.materials || [],
@@ -1128,68 +1635,132 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
             cultural_story: c.cultural_story || "",
             tags: c.tags || [],
           });
+
+          // After generating catalogue, extract craft story from the complete transcript
+          const transcriptToExtract = c.transcription || draft.transcription;
+          if (transcriptToExtract) {
+            api.catalogue.extractCraftStory({
+              transcription: transcriptToExtract,
+              language: VOICE_LANGUAGES[voiceLang]?.name || "Hindi",
+              draftId: draft.id,
+            })
+              .then(storyRes => {
+                const s = storyRes.craftStory;
+                setCraftStoryJson(s);
+                updateDraft({
+                  state: s.state || "",
+                  city: s.cityRegion || "",
+                  craft_tradition: s.craftTradition || "",
+                  technique: s.technique || "",
+                  cultural_story: s.culturalHeritageStory || "",
+                  materials: s.materialsUsed ? s.materialsUsed.split(",").map(m => m.trim()).filter(Boolean) : (c.materials || []),
+                });
+              })
+              .catch(storyErr => {
+                console.warn("Background craft story extraction notice:", storyErr);
+              });
+          }
         })
-        .catch(() => {
-          // Offline fallback: structure catalogue locally based on voice/name
-          const fallbackTrans = draft.transcription || "Handcrafted traditional craft";
-          updateDraft({
-            name: draft.name && draft.name !== "Untitled Craft" ? draft.name : (draft.craft_tradition ? `${draft.craft_tradition} Piece` : "Handcrafted Artisan Piece"),
-            category: draft.category || "Home Decor",
-            description: draft.description || fallbackTrans,
-            materials: draft.materials.length > 0 ? draft.materials : ["Natural Clay", "Natural Pigments"],
-            craft_origin: draft.craft_origin || "Jaipur, Rajasthan",
-            state: draft.state || "Rajasthan",
-            city: draft.city || "Jaipur",
-            technique: draft.technique || "Handmade Traditional Crafting",
-            cultural_story: draft.cultural_story || "Preserving traditional craft practices passed down through artisan generations in India.",
-            tags: draft.tags.length > 0 ? draft.tags : ["handmade", "heritage", "traditional", "artisan"],
-          });
+        .catch((err: any) => {
+          console.error("Auto-catalogue generation error:", err);
+          setCatalogueError(err.message || "Failed to generate AI catalogue from voice transcript.");
         })
         .finally(() => setProcessing(false));
     }
   }, [step]);
 
-  // Step 6: Pricing calculation
+  // Step 6: Dynamic Pricing Calculation State & Handler
+  const [calculatingPricing, setCalculatingPricing] = useState(false);
+  const [pricingNotice, setPricingNotice] = useState<string>("");
+
+  const handleCalculatePricing = useCallback((overrides: {
+    materialCost?: number;
+    labourHours?: number;
+    hourlyRate?: number;
+    packagingCost?: number;
+    logisticsCost?: number;
+    complexity?: "simple" | "medium" | "intricate" | "masterpiece";
+    desiredMarginPercent?: number;
+  } = {}) => {
+    setCalculatingPricing(true);
+
+    const matCost = overrides.materialCost !== undefined ? overrides.materialCost : (draft.material_cost ?? 680);
+    const labHrs = overrides.labourHours !== undefined ? overrides.labourHours : (draft.labour_hours ?? 8);
+    const hrRate = overrides.hourlyRate !== undefined ? overrides.hourlyRate : (draft.hourly_rate ?? 140);
+    const pkgCost = overrides.packagingCost !== undefined ? overrides.packagingCost : (draft.packaging_cost ?? 80);
+    const logCost = overrides.logisticsCost !== undefined ? overrides.logisticsCost : (draft.logistics_cost ?? 120);
+    const comp = overrides.complexity || draft.complexity || "medium";
+    const marginPct = overrides.desiredMarginPercent !== undefined ? overrides.desiredMarginPercent : (draft.desired_margin_percent ?? 25);
+
+    const payload = {
+      draftId: draft.id,
+      materialCost: matCost,
+      labourHours: labHrs,
+      hourlyRate: hrRate,
+      packagingCost: pkgCost,
+      logisticsCost: logCost,
+      complexity: comp,
+      category: draft.category,
+      craftTradition: draft.craft_tradition,
+      desiredMarginPercent: marginPct,
+    };
+
+    api.pricing.calculate(payload)
+      .then(res => {
+        setPricingNotice(res.explanation || res.notice);
+        updateDraft({
+          production_cost: res.productionCost,
+          minimum_fair_price: res.minimumFairPrice,
+          recommended_price: res.recommendedPrice,
+          premium_price: res.premiumPrice,
+          artisan_profit: res.artisanProfit,
+          margin_percent: res.marginPercent,
+          price_range_min: res.minimumFairPrice,
+          price_range_max: res.premiumPrice,
+          confidence_score: res.confidenceScore,
+          pricing_breakdown: res.factors,
+          material_cost: matCost,
+          labour_hours: labHrs,
+          hourly_rate: hrRate,
+          packaging_cost: pkgCost,
+          logistics_cost: logCost,
+          complexity: comp,
+          desired_margin_percent: marginPct,
+          price: draft.price || res.recommendedPrice,
+        });
+      })
+      .catch((err) => {
+        console.warn("Server pricing calculation error, using offline engine fallback:", err);
+        const localPricing = calculatePricingOffline(payload);
+        setPricingNotice(localPricing.explanation || localPricing.notice);
+        updateDraft({
+          production_cost: localPricing.productionCost,
+          minimum_fair_price: localPricing.minimumFairPrice,
+          recommended_price: localPricing.recommendedPrice,
+          premium_price: localPricing.premiumPrice,
+          artisan_profit: localPricing.artisanProfit,
+          margin_percent: localPricing.marginPercent,
+          price_range_min: localPricing.minimumFairPrice,
+          price_range_max: localPricing.premiumPrice,
+          confidence_score: localPricing.confidenceScore,
+          pricing_breakdown: localPricing.factors,
+          material_cost: matCost,
+          labour_hours: labHrs,
+          hourly_rate: hrRate,
+          packaging_cost: pkgCost,
+          logistics_cost: logCost,
+          complexity: comp,
+          desired_margin_percent: marginPct,
+          price: draft.price || localPricing.recommendedPrice,
+        });
+      })
+      .finally(() => setCalculatingPricing(false));
+  }, [draft, updateDraft]);
+
+  // Step 6: Pricing calculation on step entry
   useEffect(() => {
     if (step === "pricing") {
-      api.pricing.calculate({
-        draftId: draft.id,
-        materialCost: 680,
-        labourHours: 8,
-        hourlyRate: 140,
-        complexity: "medium",
-        category: draft.category,
-        craftTradition: draft.craft_tradition,
-      })
-        .then(res => {
-          updateDraft({
-            recommended_price: res.recommendedPrice,
-            price_range_min: res.minSuggestedPrice,
-            price_range_max: res.maxSuggestedPrice,
-            confidence_score: res.confidenceScore,
-            pricing_breakdown: res.factors,
-            price: draft.price || res.recommendedPrice,
-          });
-        })
-        .catch(() => {
-          // Offline fallback: calculate 100% locally via offline pricing engine
-          const localPricing = calculatePricingOffline({
-            materialCost: 680,
-            labourHours: 8,
-            hourlyRate: 140,
-            complexity: "medium",
-            category: draft.category,
-            craftTradition: draft.craft_tradition,
-          });
-          updateDraft({
-            recommended_price: localPricing.recommendedPrice,
-            price_range_min: localPricing.minSuggestedPrice,
-            price_range_max: localPricing.maxSuggestedPrice,
-            confidence_score: localPricing.confidenceScore,
-            pricing_breakdown: localPricing.factors,
-            price: draft.price || localPricing.recommendedPrice,
-          });
-        });
+      handleCalculatePricing();
     }
   }, [step]);
 
@@ -1322,58 +1893,287 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
     if (uploadInputRef.current) uploadInputRef.current.value = "";
   };
 
-  // Audio Recording Handlers
+  // Step 3: Audio Recording & Multilingual Auto-Cataloguer Handlers
   const startAudioRecording = async () => {
+    setVoiceError(null);
+    setEnglishDescPreview(null);
+    setWhisperTranscript("");
+    setRecorded(false);
+    // Clear out any old transcription, translation, or product data so previous state never lingers
+    updateDraft({
+      transcription: "",
+      english_translation: "",
+      description: "",
+      name: "Untitled Craft",
+      category: "",
+      materials: [],
+      craft_origin: "",
+      state: "",
+      city: "",
+      technique: "",
+      cultural_story: "",
+      tags: [],
+      translations: {},
+    });
     audioChunksRef.current = [];
+
+    // Request real microphone stream via MediaRecorder with cross-browser mime type negotiation
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      
+      const candidateTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg;codecs=opus",
+        "audio/wav"
+      ];
+      let selectedMimeType = "";
+      if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+        for (const type of candidateTypes) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            selectedMimeType = type;
+            break;
+          }
+        }
+      }
+
+      const recorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        setAudioBlob(blob);
-        setRecorded(true);
-
-        // Send to voice STT API — store verbatim transcript separately from description
-        try {
-          const res = await api.voice.transcribeAudio(blob, voiceLang, draft.id);
-          updateDraft({
-            transcription: res.transcription,
-            // description will be filled by AI catalogue step (english translation)
-          });
-        } catch {
-          // Fallback: store empty transcription so catalogue step can still run
-          updateDraft({ transcription: "" });
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
         }
       };
 
-      recorder.start();
+      recorder.onstop = async () => {
+        const effectiveMime = recorder.mimeType || selectedMimeType || "audio/webm";
+        const blob = new Blob(audioChunksRef.current, { type: effectiveMime });
+        setAudioBlob(blob);
+        setTranscribingVoice(true);
+        setEnglishDescPreview(null);
+        // Clear stale description and product attributes so previous product never leaks through
+        updateDraft({
+          description: "",
+          english_translation: "",
+          name: "Untitled Craft",
+          category: "",
+          materials: [],
+          craft_origin: "",
+          state: "",
+          city: "",
+          technique: "",
+          cultural_story: "",
+          tags: [],
+          translations: {},
+        });
+
+        try {
+          const res = await api.voice.transcribeAudio(
+            blob,
+            voiceLang,
+            draft.id,
+            undefined,
+            effectiveMime
+          );
+          // Use ONLY the real Whisper transcript from the server
+          const finalTranscript = (res.transcription || "").trim();
+
+          if (finalTranscript) {
+            // Save the real transcript directly into dedicated local state AND draft
+            setWhisperTranscript(finalTranscript);
+            updateDraft({
+              transcription: finalTranscript,
+              english_translation: "",
+              description: "",
+              name: "Untitled Craft",
+              category: "",
+              materials: [],
+              craft_origin: "",
+              state: "",
+              city: "",
+              technique: "",
+              cultural_story: "",
+              tags: [],
+              translations: {},
+            });
+            console.log(`[Voice] Real Whisper transcript received (${res.provider || "local"}): "${finalTranscript}"`);
+          } else {
+            setVoiceError("No speech detected in the recording. Please speak clearly into your microphone and try again.");
+          }
+        } catch (err: any) {
+          console.error("Voice transcribe API error:", err);
+          setVoiceError(
+            err?.message || "Could not transcribe voice. Please try speaking clearly and try again."
+          );
+        } finally {
+          setTranscribingVoice(false);
+          setRecorded(true);
+        }
+      };
+
+      recorder.start(250);
       setRecording(true);
-    } catch (err) {
-      // In case browser denies mic permission or simulated environment
-      setRecording(true);
-      setTimeout(() => {
-        setRecording(false);
-        setRecorded(true);
-        // Store empty transcription — do NOT pre-fill with fabricated content
-        updateDraft({ transcription: "" });
-      }, 2500);
+      setRecorded(false);
+      setRecordingSeconds(0);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Microphone access error:", err);
+      setRecording(false);
+      setVoiceError(
+        err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+          ? "Microphone access was denied. Please allow microphone permissions in your browser to record your craft story."
+          : "Microphone could not be accessed. Please check your device audio settings and try again."
+      );
     }
   };
 
   const stopAudioRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
     setRecording(false);
-    setRecorded(true);
   };
+
+  // Generate short, professional e-commerce description from CURRENT TRANSCRIPT ONLY
+  const generateDescriptionFromTranscript = async (transcriptText: string) => {
+    const textToUse = (transcriptText || "").trim();
+    if (!textToUse) return;
+
+    // Reset stale draft state before generation so previous product data never leaks
+    setEnglishDescPreview(null);
+    updateDraft({
+      transcription: textToUse,
+      description: "",
+      name: "Untitled Craft",
+      category: "",
+      craft_origin: "",
+      state: "",
+      city: "",
+    });
+    setGeneratingEnglishDesc(true);
+    setVoiceError(null);
+
+    try {
+      const res = await api.catalogue.generate({
+        draftId: draft.id,
+        // Pass ONLY the real spoken transcript — no old data, no hints
+        transcription: textToUse,
+        language: VOICE_LANGUAGES[voiceLang]?.name || "Hindi",
+        imageUrl: draft.enhanced_image_url || draft.image_url,
+      });
+
+      const c = res.catalogue;
+      const langCode = voiceLang;
+      const updatedTranslations = {
+        ...(c.translations || {}),
+        [langCode]: c.regional_description || c.translations?.[langCode] || "",
+      };
+
+      updateDraft({
+        transcription: textToUse,
+        english_translation: c.english_translation || "",
+        name: c.product_name || "Untitled Craft",
+        category: c.category || "",
+        description: c.english_description || "",
+        translations: updatedTranslations,
+        materials: c.materials || [],
+        craft_origin: c.craft_origin || "",
+        state: c.state || "",
+        city: c.city || "",
+        technique: c.traditional_technique || "",
+        cultural_story: c.cultural_story || "",
+        tags: c.tags || [],
+      });
+
+      if (c.english_description) {
+        setEnglishDescPreview(c.english_description);
+      } else {
+        setVoiceError("Gemini returned an empty description. Please try again.");
+      }
+    } catch (err: any) {
+      console.error("English description generation failed:", err);
+      const msg = err?.message || "Unknown error";
+      setVoiceError(`Description generation failed: ${msg}`);
+    } finally {
+      setGeneratingEnglishDesc(false);
+    }
+  };
+
+  const handleApplySampleVoice = (sampleText: string) => {
+    setVoiceError(null);
+    setEnglishDescPreview(null);
+    setWhisperTranscript(sampleText);
+    setRecorded(true);
+    generateDescriptionFromTranscript(sampleText);
+  };
+
+  const handleGenerateEnglishDescription = () => {
+    const currentTranscription = (whisperTranscript || draft.transcription || "").trim();
+    if (!currentTranscription) {
+      setVoiceError("No voice transcript available. Please record your voice first, then process your story.");
+      return;
+    }
+    generateDescriptionFromTranscript(currentTranscription);
+  };
+
+  // Step 5: Craft Story Extraction Handler (step:5__(craft story))
+  const handleExtractCraftStory = async () => {
+    const rawTranscript = (draft.transcription || "").trim();
+    if (!rawTranscript) {
+      setCraftStoryError("No voice transcription available. The artisan's speech is the source of truth.");
+      return;
+    }
+    setExtractingCraftStory(true);
+    setCraftStoryError(null);
+    try {
+      const res = await api.catalogue.extractCraftStory({
+        transcription: rawTranscript,
+        language: VOICE_LANGUAGES[voiceLang]?.name || "Hindi",
+        draftId: draft.id,
+      });
+      const s = res.craftStory;
+      setCraftStoryJson(s);
+      updateDraft({
+        state: s.state || "",
+        city: s.cityRegion || "",
+        craft_tradition: s.craftTradition || "",
+        technique: s.technique || "",
+        cultural_story: s.culturalHeritageStory || "",
+        materials: s.materialsUsed ? s.materialsUsed.split(",").map(m => m.trim()).filter(Boolean) : draft.materials,
+      });
+    } catch (err: any) {
+      console.error("Craft story extraction failed:", err);
+      setCraftStoryError(err.message || "Failed to extract craft story from voice transcript.");
+    } finally {
+      setExtractingCraftStory(false);
+    }
+  };
+
+  // Step 5: Auto-extract craft story if on step 'story' and fields are not yet populated
+  useEffect(() => {
+    if (
+      step === "story" &&
+      draft.transcription &&
+      !draft.cultural_story &&
+      !draft.craft_tradition &&
+      !craftStoryJson &&
+      !extractingCraftStory
+    ) {
+      handleExtractCraftStory();
+    }
+  }, [step, draft.transcription]);
 
   // Publishing Handler
   const handlePublish = async () => {
@@ -1425,9 +2225,9 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
       desc: "We listened to your voice and shaped it into a beautiful catalogue entry."
     },
     story: {
-      eyebrow: "Step 5 · Craft origin & story",
-      title: "Where your hands learned",
-      desc: "Every craft carries a place, a practice and a piece of you."
+      eyebrow: "step:5__(craft story)",
+      title: "Step 5: Craft Story",
+      desc: "Extracted directly from the artisan's speech as the source of truth, honoring tradition and heritage."
     },
     pricing: {
       eyebrow: "Step 6 · Smart pricing",
@@ -1458,7 +2258,7 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
       <FlowHeader current={`/add-product${step === "capture" ? "" : "/" + step}`} />
       <PageTitle eyebrow={currInfo.eyebrow} title={currInfo.title} description={currInfo.desc} />
 
-      <div className="mx-auto max-w-3xl soft-card p-6 md:p-10">
+      <div className={`mx-auto soft-card transition-all ${step === "pricing" ? "max-w-4xl p-6 md:p-10" : "max-w-3xl p-6 md:p-10"}`}>
         {/* Step 1: Capture Photo */}
         {step === "capture" && (
           <div className="text-center">
@@ -1795,56 +2595,229 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
                 <span>Spoken Language:</span>
                 <select
                   value={voiceLang}
-                  onChange={e => setVoiceLang(e.target.value)}
+                  onChange={e => {
+                    setVoiceLang(e.target.value);
+                    setEnglishDescPreview(null);
+                    setVoiceError(null);
+                  }}
                   className="bg-transparent font-bold outline-none cursor-pointer"
                 >
                   <option value="hi">हिन्दी (Hindi)</option>
                   <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
                   <option value="ta">தமிழ் (Tamil)</option>
                   <option value="te">తెలుగు (Telugu)</option>
-                  <option value="en">English</option>
+                  <option value="en">English (English)</option>
                 </select>
               </div>
             </div>
 
-            <div className={`mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 ${recording ? "border-[#9C0000] recording-pulse" : "border-[#D4AF37]"} bg-[#FFF2C9] text-[#9C0000]`}>
+            <div className={`mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 ${recording ? "border-[#9C0000] recording-pulse shadow-[0_0_25px_rgba(156,0,0,0.4)]" : "border-[#D4AF37]"} bg-[#FFF2C9] text-[#9C0000] transition-all`}>
               <button
                 onClick={() => recording ? stopAudioRecording() : startAudioRecording()}
-                className="flex h-20 w-20 items-center justify-center rounded-full bg-[#9C0000] text-[#FFE7A6] shadow-lg transition hover:scale-105"
-                aria-label="Toggle Recording"
+                className={`flex h-20 w-20 items-center justify-center rounded-full ${recording ? "bg-[#7A0000] scale-95" : "bg-[#9C0000]"} text-[#FFE7A6] shadow-lg transition hover:scale-105`}
+                aria-label={recording ? "Stop Recording" : "Start Recording"}
               >
-                <Mic size={32} />
+                {recording ? <Square size={28} className="fill-[#FFE7A6]" /> : <Mic size={32} />}
               </button>
             </div>
 
             <h2 className="mt-7 font-serif text-3xl">Tell us about your product</h2>
-            <p className="mt-3 text-sm text-[#806459]">
-              {recording ? "Listening… tap microphone when finished" : "Tap the microphone and speak naturally in your mother tongue"}
-            </p>
+
+            {recording ? (
+              <div className="mt-3">
+                <p className="text-sm font-semibold text-[#9C0000] flex items-center justify-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#9C0000] animate-ping" />
+                  Recording in {VOICE_LANGUAGES[voiceLang]?.name} · {Math.floor(recordingSeconds / 60).toString().padStart(2, "0")}:{(recordingSeconds % 60).toString().padStart(2, "0")}
+                </p>
+                <p className="text-xs text-[#806459] mt-1">Speak naturally about your craft, materials, or story · Tap button to stop</p>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-[#806459]">
+                Tap the microphone and speak naturally in your mother tongue
+              </p>
+            )}
 
             {recording && (
               <div className="mx-auto mt-6 flex h-8 items-center justify-center gap-1">
                 {[4, 10, 18, 28, 14, 32, 20, 10, 24, 12, 30, 16].map((h, i) => (
-                  <span key={i} className="wave-bar" style={{ height: h }} />
+                  <span key={i} className="wave-bar" style={{ height: `${Math.max(6, (h * ((recordingSeconds % 3) + 1)) % 36)}px` }} />
                 ))}
               </div>
             )}
 
-            {recorded && !recording && (
-              <div className="mt-8 space-y-4">
-                <div className="rounded-xl bg-[#FFF2C9] p-4 text-left">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9C0000]">
-                    <Mic size={15} /> Voice understood & transcribed
+            {/* Transcribing Voice State */}
+            {transcribingVoice && (
+              <div className="mt-8 rounded-xl bg-[#FFF2C9] p-5 text-center border border-[#E5D7B7] max-w-md mx-auto">
+                <div className="ai-spinner mx-auto mb-3"><Sparkles size={20} /></div>
+                <p className="font-semibold text-sm text-[#2C1710]">Transcribing your speech in {VOICE_LANGUAGES[voiceLang]?.name} ({VOICE_LANGUAGES[voiceLang]?.native})…</p>
+                <p className="text-xs text-[#806459] mt-1">Converting voice to authentic native text</p>
+              </div>
+            )}
+
+            {/* Microphone Permission / Device Error */}
+            {voiceError && (
+              <div className="mt-6 mx-auto max-w-md rounded-xl bg-amber-50 border border-amber-200 p-4 text-left">
+                <p className="text-xs font-semibold text-amber-800 mb-2">Microphone Notice</p>
+                <p className="text-xs text-amber-700 leading-relaxed">{voiceError}</p>
+                <div className="mt-3 pt-3 border-t border-amber-200">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-900 mb-2">Or test with a sample voice story:</p>
+                  <button
+                    onClick={() => handleApplySampleVoice(VOICE_LANGUAGES[voiceLang]?.sample)}
+                    className="text-xs font-medium text-[#9C0000] hover:underline bg-[#FFF2C9] px-2.5 py-1.5 rounded-lg border border-[#E5D7B7] text-left block w-full"
+                  >
+                    🎤 Try sample in {VOICE_LANGUAGES[voiceLang]?.name}: "{VOICE_LANGUAGES[voiceLang]?.sampleDesc}"
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Sample voice chip when idle */}
+            {!recording && !transcribingVoice && !recorded && !voiceError && (
+              <div className="mt-6">
+                <button
+                  onClick={() => handleApplySampleVoice(VOICE_LANGUAGES[voiceLang]?.sample)}
+                  className="inline-flex items-center gap-1.5 text-xs text-[#806459] hover:text-[#9C0000] transition bg-[#FFF9EA] px-3 py-1.5 rounded-full border border-[#EEDFBF]"
+                >
+                  <Sparkles size={12} className="text-[#D4AF37]" />
+                  Try sample speech in {VOICE_LANGUAGES[voiceLang]?.name}: "{VOICE_LANGUAGES[voiceLang]?.sampleDesc}"
+                </button>
+              </div>
+            )}
+
+            {/* Step 3 Recognized Speech / Transcript & Description Result */}
+            {recorded && !recording && !transcribingVoice && (
+              <div className="mt-8 space-y-4 max-w-xl mx-auto">
+                {/* 1. Show Recognized Speech / Transcript FIRST */}
+                <div className="rounded-xl bg-[#FFF2C9] p-4 text-left border border-[#E5D7B7] shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9C0000]">
+                      <Mic size={15} /> Voice understood & transcribed · {VOICE_LANGUAGES[voiceLang]?.name} ({VOICE_LANGUAGES[voiceLang]?.native})
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#7A5A12] bg-[#FFE7A6] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Recognized Speech
+                    </span>
                   </div>
-                  <p className="mt-2 font-serif text-lg leading-7 text-[#2C1710]">
-                    “{draft.description || "यह जयपुर की नीली मिट्टी से बना हुआ फूलदान है जिसे मैंने हाथ से प्राकृतिक रंगों से सजाया है..."}”
+                  <p className="mt-2.5 font-serif text-lg leading-7 text-[#2C1710]">
+                    {(whisperTranscript || draft.transcription)
+                      ? <>“{whisperTranscript || draft.transcription}”</>
+                      : <span className="text-[#9C6B3C] italic">No transcript yet — please record your voice.</span>}
                   </p>
                 </div>
-                <div className="flex justify-center gap-3">
-                  <button onClick={() => { setRecorded(false); }} className="small-btn">Re-record</button>
-                  <button onClick={() => navigate("/add-product/catalogue")} className="gold-btn">
-                    Process my story <ArrowRight size={15} />
+
+                {/* 2. Generating English Description State */}
+                {generatingEnglishDesc && (
+                  <div className="rounded-xl bg-[#FFF9EA] border border-[#EEDFBF] p-6 text-center shadow-sm">
+                    <div className="ai-spinner mx-auto mb-3"><Sparkles size={20} /></div>
+                    <p className="font-serif text-base text-[#2C1710]">KalaSetu AI is generating professional English product description…</p>
+                    <p className="text-xs text-[#806459] mt-1">Understanding artisan product details without inventing facts</p>
+                  </div>
+                )}
+
+                {/* 3. Display Result: Generated Professional English Product Description (ONLY after generation) */}
+                {englishDescPreview && !generatingEnglishDesc && (
+                  <div className="rounded-xl bg-white border border-[#D4AF37] p-5 text-left shadow-md">
+                    <div className="flex items-center justify-between border-b border-[#F0E6D2] pb-2 mb-3">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#7A5A12]">
+                        <Sparkles size={15} className="text-[#D4AF37]" /> Professional English Product Description
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase">
+                        AI Generated
+                      </span>
+                    </div>
+
+                    {draft.english_translation && (
+                      <div className="mb-3 rounded-lg bg-[#FAF8F5] border border-[#EADBCE] p-3 text-left">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#8A5A36] mb-1">
+                          Direct English Translation (Faithful to Speech)
+                        </div>
+                        <p className="text-sm italic text-[#4A3225]">
+                          “{draft.english_translation}”
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="font-serif text-base leading-relaxed text-[#2C1710]">
+                      {englishDescPreview}
+                    </p>
+
+                    {/* Listen Button for Artisan Native Language Sarvam TTS */}
+                    <div className="mt-4 pt-3 border-t border-[#F0E6D2] flex flex-wrap items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        id="listen-tts-btn"
+                        onClick={() => handleListenTts(englishDescPreview)}
+                        disabled={loadingTts}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FFF2C9] hover:bg-[#FFE7A6] border border-[#E5D7B7] text-xs font-bold text-[#9C0000] transition-all shadow-xs disabled:opacity-60 cursor-pointer"
+                      >
+                        {loadingTts ? (
+                          <>
+                            <Sparkles size={14} className="animate-spin text-[#9C0000]" />
+                            <span>Translating & generating voice…</span>
+                          </>
+                        ) : playingTts ? (
+                          <>
+                            <span>⏹ Stop Voice Playback</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{voiceLang === "hi" ? "🔊 सुनें" : voiceLang === "pa" ? "🔊 ਸੁਣੋ" : voiceLang === "ta" ? "🔊 கேளுங்கள்" : voiceLang === "te" ? "🔊 వినండి" : "🔊 Listen"}</span>
+                            <span className="text-[10px] font-normal text-[#7A5A12] opacity-80">
+                              ({VOICE_LANGUAGES[voiceLang]?.name || "Hindi"})
+                            </span>
+                          </>
+                        )}
+                      </button>
+
+                      {ttsError && (
+                        <span className="text-xs text-red-600 font-semibold">
+                          {ttsError}
+                        </span>
+                      )}
+                    </div>
+
+                    {draft.name && draft.name !== "Untitled Craft" && (
+                      <div className="mt-3 pt-3 border-t border-[#F0E6D2] flex flex-wrap items-center gap-3 text-xs text-[#6F5246]">
+                        <span><strong>Product:</strong> {draft.name}</span>
+                        {draft.category && <span>• <strong>Category:</strong> {draft.category}</span>}
+                        {Array.isArray(draft.materials) && draft.materials.length > 0 && (
+                          <span>• <strong>Materials:</strong> {draft.materials.join(", ")}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setRecorded(false);
+                      setWhisperTranscript("");
+                      setEnglishDescPreview(null);
+                      setVoiceError(null);
+                      updateDraft({ transcription: "", description: "" });
+                    }}
+                    className="small-btn"
+                  >
+                    Re-record
                   </button>
+
+                  {!englishDescPreview ? (
+                    <button
+                      onClick={handleGenerateEnglishDescription}
+                      disabled={generatingEnglishDesc || !(whisperTranscript || draft.transcription)}
+                      className="gold-btn flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Sparkles size={16} /> Process my story
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => navigate("/add-product/catalogue")}
+                      className="gold-btn flex items-center gap-2"
+                    >
+                      View Full Catalogue <ArrowRight size={15} />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1861,12 +2834,29 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
             </div>
           ) : (
             <div>
-              <div className="mb-6 rounded-xl bg-[#FFF2C9] p-4">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9C0000]">
-                  <Mic size={15} /> Voice understood · {voiceLang === "hi" ? "Hindi" : voiceLang === "pa" ? "Punjabi" : voiceLang === "ta" ? "Tamil" : voiceLang === "te" ? "Telugu" : "English"}
+              {catalogueError && (
+                <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-4 text-xs text-red-700 flex items-start gap-2">
+                  <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold">Catalogue Generation Notice</p>
+                    <p className="mt-0.5">{catalogueError}</p>
+                  </div>
                 </div>
-                <p className="mt-2 font-serif text-base text-[#3E2319]">
-                  “{draft.transcription || "जयपुर की नीली मिट्टी से बना हुआ फूलदान..."}”
+              )}
+
+              <div className="mb-6 rounded-xl bg-[#FFF2C9] p-4 border border-[#E5D7B7]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9C0000]">
+                    <Mic size={15} /> Voice Understood · {VOICE_LANGUAGES[voiceLang]?.name || "Hindi"} ({VOICE_LANGUAGES[voiceLang]?.native || "हिन्दी"})
+                  </div>
+                  <span className="text-[10px] font-semibold text-[#7A5A12] bg-[#FFE7A6] px-2 py-0.5 rounded-full uppercase">
+                    Verbatim Transcript
+                  </span>
+                </div>
+                <p className="mt-2.5 font-serif text-base text-[#3E2319]">
+                  {draft.transcription
+                    ? <>“{draft.transcription}”</>
+                    : <span className="italic text-[#9C6B3C]">No voice transcript yet. Please complete the voice step first.</span>}
                 </p>
               </div>
 
@@ -1895,14 +2885,38 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
                     onChange={e => updateDraft({ craft_origin: e.target.value })}
                   />
                 </label>
-                <label className="field-label sm:col-span-2">
-                  English Description
+                <div className="sm:col-span-2 space-y-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="field-label mb-0">English Description</span>
+                    {draft.description && (
+                      <button
+                        type="button"
+                        onClick={() => handleListenTts(draft.description)}
+                        disabled={loadingTts}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF2C9] hover:bg-[#FFE7A6] border border-[#E5D7B7] text-[11px] font-bold text-[#9C0000] transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        {loadingTts ? (
+                          <>
+                            <Sparkles size={12} className="animate-spin text-[#9C0000]" />
+                            <span>Generating voice…</span>
+                          </>
+                        ) : playingTts ? (
+                          <span>⏹ Stop</span>
+                        ) : (
+                          <>
+                            <span>{voiceLang === "hi" ? "🔊 सुनें" : voiceLang === "pa" ? "🔊 ਸੁਣੋ" : voiceLang === "ta" ? "🔊 கேளுங்கள்" : voiceLang === "te" ? "🔊 వినండి" : "🔊 Listen"}</span>
+                            <span className="text-[10px] font-normal text-[#7A5A12]">({VOICE_LANGUAGES[voiceLang]?.name})</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <textarea
-                    className="field h-24"
+                    className="field h-24 w-full"
                     value={draft.description}
                     onChange={e => updateDraft({ description: e.target.value })}
                   />
-                </label>
+                </div>
                 <label className="field-label sm:col-span-2">
                   Regional-language Description ({voiceLang.toUpperCase()})
                   <textarea
@@ -1940,97 +2954,203 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
           )
         )}
 
-        {/* Step 5: Craft Origin & Story */}
+        {/* Step 5: Craft Story (step:5__(craft story)) */}
         {step === "story" && (
           <div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="field-label">
-                State
-                <input className="field" value={draft.state || "Rajasthan"} onChange={e => updateDraft({ state: e.target.value })} />
-              </label>
-              <label className="field-label">
-                City / Region
-                <input className="field" value={draft.city || "Jaipur"} onChange={e => updateDraft({ city: e.target.value })} />
-              </label>
-              <label className="field-label">
-                Craft Tradition
-                <input className="field" value={draft.craft_tradition || "Jaipur Blue Pottery"} onChange={e => updateDraft({ craft_tradition: e.target.value })} />
-              </label>
-              <label className="field-label">
-                Technique
-                <input className="field" value={draft.technique || "Hand painting & glazing"} onChange={e => updateDraft({ technique: e.target.value })} />
-              </label>
-              <label className="field-label sm:col-span-2">
-                Materials Used
-                <input className="field" value={Array.isArray(draft.materials) ? draft.materials.join(", ") : draft.materials} onChange={e => updateDraft({ materials: e.target.value.split(",").map(s => s.trim()) })} />
-              </label>
-              <label className="field-label sm:col-span-2">
-                Cultural Heritage Story
-                <textarea
-                  className="field h-32"
-                  value={draft.cultural_story}
-                  onChange={e => updateDraft({ cultural_story: e.target.value })}
-                />
-              </label>
+            {/* Header Banner */}
+            <div className="mb-6 rounded-2xl bg-[#FFF2C9] border border-[#E5D7B7] p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-[#9C0000] bg-[#FFE7A6] border border-[#E5D7B7] px-3.5 py-1.5 rounded-full shadow-xs">
+                    step:5__(craft story)
+                  </span>
+                  <span className="text-sm font-serif font-bold text-[#2C1710]">
+                    Step 5: Craft Story
+                  </span>
+                </div>
+                <button
+                  onClick={handleExtractCraftStory}
+                  disabled={extractingCraftStory}
+                  className="small-btn flex items-center gap-1.5 text-xs font-semibold"
+                >
+                  <Sparkles size={13} className="text-[#D4AF37]" />
+                  {extractingCraftStory ? "Extracting from speech…" : "Re-extract from voice"}
+                </button>
+              </div>
+              <p className="mt-2.5 text-xs text-[#6F5246] leading-relaxed">
+                The artisan's speech is the source of truth. All cultural details, techniques, materials, and regional heritage are extracted strictly from what was spoken, translated into clear English without invented information.
+              </p>
             </div>
-            <div className="mt-8 flex justify-end">
-              <button onClick={() => navigate("/add-product/pricing")} className="gold-btn">
-                Continue to Smart Pricing <ArrowRight size={16} />
-              </button>
+
+            {/* Error banner if any */}
+            {craftStoryError && (
+              <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-4 text-xs text-red-700 flex items-start gap-2">
+                <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold">Extraction Notice</p>
+                  <p className="mt-0.5">{craftStoryError}</p>
+                </div>
+                <button
+                  onClick={handleExtractCraftStory}
+                  className="font-bold underline text-red-800 ml-2"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Artisan's Speech: The Source of Truth */}
+            <div className="mb-6 rounded-xl bg-white border border-[#E8DEC7] p-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#F2ECE1] pb-2 mb-2">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#9C0000]">
+                  <Mic size={14} /> Artisan's Voice Transcript (Source of Truth)
+                </div>
+                <span className="text-[10px] font-semibold text-[#7A5A12] bg-[#FFF2C9] px-2 py-0.5 rounded-full uppercase">
+                  {VOICE_LANGUAGES[voiceLang]?.name || "Hindi"}
+                </span>
+              </div>
+              <p className="font-serif text-base text-[#2C1710] leading-relaxed">
+                “{draft.transcription || "(No voice transcription recorded yet)"}”
+              </p>
             </div>
+
+            {/* Loading Spinner during extraction */}
+            {extractingCraftStory ? (
+              <div className="py-14 text-center rounded-xl bg-[#FFF9EA] border border-[#EEDFBF]">
+                <div className="ai-spinner mx-auto mb-3"><Sparkles size={22} /></div>
+                <h3 className="font-serif text-xl text-[#2C1710]">Extracting craft story from speech…</h3>
+                <p className="text-xs text-[#806459] mt-1.5">Preserving artisan's authentic heritage and translating to natural English</p>
+              </div>
+            ) : (
+              <>
+                {/* 6 Form Fields - strictly no mock data fallbacks */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="field-label">
+                    State
+                    <input
+                      className="field"
+                      placeholder="e.g. Rajasthan, Bihar, Tamil Nadu (empty if unmentioned)"
+                      value={draft.state || ""}
+                      onChange={e => {
+                        updateDraft({ state: e.target.value });
+                        if (craftStoryJson) setCraftStoryJson({ ...craftStoryJson, state: e.target.value });
+                      }}
+                    />
+                  </label>
+                  <label className="field-label">
+                    City / Region
+                    <input
+                      className="field"
+                      placeholder="e.g. Jaipur, Madhubani, Thanjavur (empty if unmentioned)"
+                      value={draft.city || ""}
+                      onChange={e => {
+                        updateDraft({ city: e.target.value });
+                        if (craftStoryJson) setCraftStoryJson({ ...craftStoryJson, cityRegion: e.target.value });
+                      }}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Craft Tradition
+                    <input
+                      className="field"
+                      placeholder="e.g. Madhubani Painting, Blue Pottery (empty if unmentioned)"
+                      value={draft.craft_tradition || ""}
+                      onChange={e => {
+                        updateDraft({ craft_tradition: e.target.value });
+                        if (craftStoryJson) setCraftStoryJson({ ...craftStoryJson, craftTradition: e.target.value });
+                      }}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Technique
+                    <input
+                      className="field"
+                      placeholder="e.g. Hand-painting using natural pigments (empty if unmentioned)"
+                      value={draft.technique || ""}
+                      onChange={e => {
+                        updateDraft({ technique: e.target.value });
+                        if (craftStoryJson) setCraftStoryJson({ ...craftStoryJson, technique: e.target.value });
+                      }}
+                    />
+                  </label>
+                  <label className="field-label sm:col-span-2">
+                    Materials Used
+                    <input
+                      className="field"
+                      placeholder="e.g. Clay, natural colors, rice paste (empty if unmentioned)"
+                      value={Array.isArray(draft.materials) ? draft.materials.join(", ") : (draft.materials || "")}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const arr = val.split(",").map(s => s.trim()).filter(Boolean);
+                        updateDraft({ materials: arr });
+                        if (craftStoryJson) setCraftStoryJson({ ...craftStoryJson, materialsUsed: val });
+                      }}
+                    />
+                  </label>
+                  <label className="field-label sm:col-span-2">
+                    Cultural Heritage Story
+                    <textarea
+                      className="field h-32 leading-relaxed"
+                      placeholder="Preserved artisan heritage story in clear natural English (empty if unmentioned)"
+                      value={draft.cultural_story || ""}
+                      onChange={e => {
+                        updateDraft({ cultural_story: e.target.value });
+                        if (craftStoryJson) setCraftStoryJson({ ...craftStoryJson, culturalHeritageStory: e.target.value });
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* Valid JSON Output display box matching the exact required format */}
+                <div className="mt-6 rounded-xl bg-[#2C1710] text-[#FFF4D1] p-4 shadow-md">
+                  <div className="flex items-center justify-between border-b border-[#4A2D22] pb-2 mb-2.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37]">
+                      <Sparkles size={14} /> Extracted JSON · step:5__(craft story)
+                    </div>
+                    <button
+                      onClick={() => setShowCraftStoryJson(!showCraftStoryJson)}
+                      className="text-[11px] text-[#D4AF37] hover:underline"
+                    >
+                      {showCraftStoryJson ? "Collapse JSON" : "Show JSON"}
+                    </button>
+                  </div>
+                  {showCraftStoryJson && (
+                    <pre className="font-mono text-xs leading-5 text-[#E8DEC7] overflow-x-auto p-3 bg-[#1E0F0B] rounded-lg border border-[#3E2319]">
+                      {JSON.stringify({
+                        state: draft.state || "",
+                        cityRegion: draft.city || "",
+                        craftTradition: draft.craft_tradition || "",
+                        technique: draft.technique || "",
+                        materialsUsed: Array.isArray(draft.materials) ? draft.materials.join(", ") : (draft.materials || ""),
+                        culturalHeritageStory: draft.cultural_story || ""
+                      }, null, 2)}
+                    </pre>
+                  )}
+                </div>
+
+                <div className="mt-8 flex flex-wrap justify-between items-center gap-3">
+                  <button onClick={() => navigate("/add-product/catalogue")} className="small-btn inline-flex items-center gap-1.5">
+                    <ArrowLeft size={16} /> Back to Auto-Catalogue
+                  </button>
+                  <button onClick={() => navigate("/add-product/pricing")} className="gold-btn">
+                    Continue to Smart Pricing <ArrowRight size={16} />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        {/* Step 6: Smart Pricing */}
+        {/* Step 6: Dynamic Pricing */}
         {step === "pricing" && (
-          <div>
-            <div className="rounded-2xl bg-[#9C0000] p-7 text-[#FFF4D1] shadow-lg">
-              <div className="flex items-center gap-2 text-[#E8C754]">
-                <Sparkles size={18} /> KalaSetu Recommendation
-              </div>
-              <div className="mt-4 font-serif text-5xl">₹{Number(draft.price || draft.recommended_price || 2450).toLocaleString("en-IN")}</div>
-              <p className="mt-2 text-sm text-[#EBCABD]">Recommended price · {draft.confidence_score || 92}% confidence</p>
-              <div className="mt-6 flex justify-between border-t border-[#D4AF37]/30 pt-4 text-xs">
-                <span>Suggested Range<br /><b className="text-base text-white">₹{draft.price_range_min || 2100} — ₹{draft.price_range_max || 2800}</b></span>
-                <span>Fair Wage Confidence<br /><b className="text-base text-[#E8C754]">{draft.confidence_score || 92}%</b></span>
-              </div>
-            </div>
-
-            <div className="mt-7 space-y-4">
-              {(draft.pricing_breakdown && draft.pricing_breakdown.length > 0 ? draft.pricing_breakdown : [
-                { label: "Material cost", amount: "₹680", percent: "28%" },
-                { label: "Your time & labour", amount: "₹1,120", percent: "46%" },
-                { label: "Market trend & heritage markup", amount: "₹650", percent: "26%" }
-              ]).map(x => (
-                <div className="flex items-center gap-3 text-sm" key={x.label}>
-                  <span className="w-36 text-[#765B4F] text-xs font-medium">{x.label}</span>
-                  <div className="h-2 flex-1 rounded-full bg-[#EFE4CD] overflow-hidden">
-                    <div className="h-full rounded-full bg-[#D4AF37]" style={{ width: x.percent }} />
-                  </div>
-                  <b className="w-16 text-right">{x.amount}</b>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 pt-5 border-t border-[#EEE4CB]">
-              <label className="field-label">
-                Your Selling Price (₹)
-                <input
-                  type="number"
-                  className="field mt-2"
-                  value={draft.price}
-                  onChange={e => updateDraft({ price: Number(e.target.value) })}
-                />
-              </label>
-              <p className="mt-2 text-xs text-[#8E7265]">Notice: KalaSetu provides a fair wage price recommendation. You retain full control of your final price.</p>
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <button onClick={() => navigate("/add-product/similarity")} className="gold-btn">
-                Accept & Check Similarity <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
+          <DynamicPricingScreen
+            draft={draft}
+            updateDraft={updateDraft}
+            onNavigateNext={() => navigate("/add-product/similarity")}
+            onNavigateBack={() => navigate("/add-product/story")}
+            externalLoading={calculatingPricing}
+            externalError={pricingNotice && pricingNotice.toLowerCase().includes("error") ? pricingNotice : null}
+          />
         )}
 
         {/* Step 7: Similarity Check */}
@@ -2046,7 +3166,10 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#836A5F]">
               {draft.similarity_notes || "Your craft displays a distinct visual and cultural identity. It is ready to stand on its own in the living heritage catalogue."}
             </p>
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex flex-wrap justify-between items-center gap-3">
+              <button onClick={() => navigate("/add-product/pricing")} className="small-btn inline-flex items-center gap-1.5">
+                <ArrowLeft size={16} /> Back to Smart Pricing
+              </button>
               <button onClick={() => navigate("/add-product/review")} className="gold-btn">
                 Continue to Review <ArrowRight size={16} />
               </button>
@@ -2621,11 +3744,16 @@ const buyerNav = [
 ];
 
 function BuyerShell() {
-  const { session, clearSession } = useSession();
+  const { session, user, clearSession, emailVerified } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+
+  // Block buyer access if email is unverified (except guest collector)
+  if (session && user && user.role === "buyer" && user.id !== "b-guest" && !emailVerified) {
+    return <UnverifiedScreen userEmail={user?.email || ""} onLogout={() => { clearSession(); navigate("/"); }} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#FBF8F1] text-[#24130F]">
@@ -2668,6 +3796,164 @@ function BuyerShell() {
 function BuyerLogin() {
   const { startSession } = useSession();
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isRegister, setIsRegister] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Verification states
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendNotice, setResendNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleResend = async (targetEmail: string) => {
+    if (!targetEmail || !isSupabaseConfigured()) return;
+    setResendLoading(true);
+    setResendNotice(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: targetEmail.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      setResendNotice({
+        type: "success",
+        text: `Verification email resent to ${targetEmail}. Please check your inbox.`,
+      });
+    } catch (err: any) {
+      setResendNotice({
+        type: "error",
+        text: err.message || "Failed to resend verification email. Please try again.",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleAuth = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError("");
+    setUnverifiedEmail(null);
+    setResendNotice(null);
+    setLoading(true);
+
+    const emailTrimmed = email.trim();
+
+    try {
+      if (isRegister) {
+        if (!name.trim()) {
+          setError("Please enter your name");
+          setLoading(false);
+          return;
+        }
+
+        if (isSupabaseConfigured()) {
+          const { data, error: signUpErr } = await supabase.auth.signUp({
+            email: emailTrimmed,
+            password: password.trim(),
+            options: {
+              data: {
+                name: name.trim(),
+                role: "buyer",
+              },
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
+
+          if (signUpErr) throw signUpErr;
+
+          if (data.user && !data.user.email_confirmed_at && !data.user.confirmed_at) {
+            setSentEmail(emailTrimmed);
+            setVerificationSent(true);
+            setLoading(false);
+            return;
+          } else if (data.user) {
+            const res = await api.auth.syncSupabase(data.user);
+            startSession(res.token, res.user);
+            navigate("/buyer/home", { replace: true });
+            return;
+          }
+        }
+
+        // Fallback registration
+        startSession("buyer-token", {
+          id: `b-${Date.now()}`,
+          name: name.trim(),
+          email: emailTrimmed,
+          role: "buyer",
+          craft_tradition: "",
+          state: "",
+          city: "",
+          experience_years: 0,
+          bio: "",
+          preferred_language: "en",
+          email_verified: true,
+        });
+        navigate("/buyer/home", { replace: true });
+      } else {
+        // Sign In
+        if (isSupabaseConfigured() && emailTrimmed.includes("@")) {
+          const { data, error: signInErr } = await supabase.auth.signInWithPassword({
+            email: emailTrimmed,
+            password: password.trim(),
+          });
+
+          if (signInErr) {
+            if (signInErr.message.toLowerCase().includes("email not confirmed")) {
+              setUnverifiedEmail(emailTrimmed);
+              setError("Your email address is not verified yet. Please verify your email before exploring.");
+              setLoading(false);
+              return;
+            }
+            throw signInErr;
+          }
+
+          if (data.user) {
+            const isConfirmed = Boolean(data.user.email_confirmed_at || data.user.confirmed_at);
+            if (!isConfirmed) {
+              setUnverifiedEmail(emailTrimmed);
+              setError("Your email address is not verified yet. Please check your inbox or click below to resend the verification email.");
+              setLoading(false);
+              return;
+            }
+
+            const syncRes = await api.auth.syncSupabase(data.user);
+            startSession(syncRes.token, syncRes.user);
+            navigate("/buyer/home", { replace: true });
+            return;
+          }
+        }
+
+        // Fallback sign in
+        startSession("buyer-token", {
+          id: "b1",
+          name: emailTrimmed.split("@")[0] || "Collector",
+          email: emailTrimmed,
+          role: "buyer",
+          craft_tradition: "",
+          state: "",
+          city: "",
+          experience_years: 0,
+          bio: "",
+          preferred_language: "en",
+          email_verified: true,
+        });
+        navigate("/buyer/home", { replace: true });
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in. Please verify your details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#9C0000] text-white">
       <div className="hidden flex-1 flex-col justify-between p-12 lg:flex">
@@ -2678,20 +3964,168 @@ function BuyerLogin() {
         </div>
         <p className="text-xs text-[#DDAFA2]">© KalaSetu · Made for curious hearts</p>
       </div>
+
       <div className="relative flex w-full items-center justify-center bg-[#FFE7A6] px-5 py-10 text-[#210707] lg:max-w-[520px]">
         <div className="absolute right-5 top-5"><LanguageSelector /></div>
         <div className="w-full max-w-sm">
-          <div className="mb-10 lg:hidden"><Logo /></div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-[#9C0000]">Buyer account</p>
-          <h2 className="mt-3 font-serif text-4xl">Welcome, collector.</h2>
-          <p className="mt-3 text-sm text-[#6E5148]">Sign in to discover pieces with a pulse.</p>
-          <input placeholder="Email or mobile number" className="field mt-8" />
-          <button onClick={() => { startSession("buyer-token", { id: "b1", name: "Ananya Roy", role: "buyer", craft_tradition: "", state: "", city: "", experience_years: 0, bio: "", preferred_language: "en" }); navigate("/buyer/home", { replace: true }); }} className="mt-4 w-full rounded-xl bg-[#9C0000] py-3.5 font-semibold text-[#FFE7A6]">
-            Continue <ArrowRight className="ml-2 inline" size={16} />
-          </button>
-          <button onClick={() => { startSession("buyer-guest-token", { id: "b-guest", name: "Guest Collector", role: "buyer", craft_tradition: "", state: "", city: "", experience_years: 0, bio: "", preferred_language: "en" }); navigate("/buyer/home", { replace: true }); }} className="mt-4 w-full rounded-xl border border-[#C5A66D] py-3 text-sm font-semibold">
-            Continue as guest
-          </button>
+          <div className="mb-8 lg:hidden"><Logo /></div>
+
+          {verificationSent ? (
+            <div className="rounded-3xl border border-[#C5A66D] bg-white/80 p-7 text-center shadow-lg">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFF2C9] text-[#9C0000] mb-4">
+                <Mail size={28} />
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9C0000]">Buyer Account</p>
+              <h2 className="mt-2 font-serif text-3xl text-[#24130F]">Check your email</h2>
+              <p className="mt-3 text-xs text-[#6E5148] leading-5">
+                We've sent a verification link to <strong className="text-[#24130F]">{sentEmail}</strong>.
+              </p>
+              <p className="mt-2 text-xs text-[#6E5148] leading-5">
+                Click the link in the email to activate your account and start discovering authentic Indian crafts.
+              </p>
+
+              {resendNotice && (
+                <div className={`mt-4 rounded-xl p-3 text-xs font-medium ${resendNotice.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+                  {resendNotice.text}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleResend(sentEmail)}
+                disabled={resendLoading}
+                className="mt-6 w-full rounded-xl bg-[#9C0000] py-3 text-xs font-semibold text-[#FFE7A6] hover:bg-[#750000] disabled:opacity-60 transition"
+              >
+                {resendLoading ? "Resending..." : "Resend Verification Email"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setVerificationSent(false); setIsRegister(false); setError(""); }}
+                className="mt-3 w-full rounded-xl border border-[#C5A66D] py-2.5 text-xs font-semibold text-[#66493E] hover:bg-[#FFF2C9] transition"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs font-bold uppercase tracking-[.2em] text-[#9C0000]">Buyer account</p>
+              <h2 className="mt-2 font-serif text-3xl md:text-4xl">{isRegister ? "Join as Collector" : "Welcome, collector."}</h2>
+              <p className="mt-2 text-xs md:text-sm text-[#6E5148]">
+                {isRegister ? "Create an account to save pieces and connect with master artisans." : "Sign in to discover pieces with a pulse."}
+              </p>
+
+              {error && (
+                <div className="mt-4 rounded-xl border border-[#9C0000]/30 bg-[#FBE8E2] p-3.5 text-xs font-medium text-[#9C0000]">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <div className="flex-1">{error}</div>
+                  </div>
+
+                  {unverifiedEmail && (
+                    <div className="mt-3 pt-2.5 border-t border-[#9C0000]/20">
+                      <button
+                        type="button"
+                        onClick={() => handleResend(unverifiedEmail)}
+                        disabled={resendLoading}
+                        className="inline-flex items-center gap-1.5 font-bold text-[#750000] hover:underline"
+                      >
+                        <RefreshCw size={13} className={resendLoading ? "animate-spin" : ""} />
+                        {resendLoading ? "Sending link..." : "Resend Verification Email"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {resendNotice && (
+                <div className={`mt-4 rounded-xl p-3 text-xs font-medium ${resendNotice.type === "success" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+                  {resendNotice.text}
+                </div>
+              )}
+
+              <form onSubmit={handleAuth} className="mt-6 space-y-3">
+                {isRegister && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Your Name</label>
+                    <input
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="e.g. Ananya Roy"
+                      className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
+                      required
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="e.g. collector@gmail.com"
+                    className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Enter password (at least 6 characters)"
+                    className="w-full rounded-xl border border-[#C5A66D] bg-white/70 px-3 py-2.5 text-sm outline-none focus:border-[#9C0000]"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-4 w-full rounded-xl bg-[#9C0000] py-3.5 font-semibold text-[#FFE7A6] hover:bg-[#750000] disabled:opacity-60 transition"
+                >
+                  {loading ? "Authenticating..." : (isRegister ? "Create Buyer Account" : "Continue")} <ArrowRight className="ml-2 inline" size={16} />
+                </button>
+              </form>
+
+              <div className="my-5 flex items-center gap-3 text-xs text-[#99766A]">
+                <span className="h-px flex-1 bg-[#CDB47D]" />or<span className="h-px flex-1 bg-[#CDB47D]" />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  startSession("buyer-guest-token", {
+                    id: "b-guest",
+                    name: "Guest Collector",
+                    role: "buyer",
+                    craft_tradition: "",
+                    state: "",
+                    city: "",
+                    experience_years: 0,
+                    bio: "",
+                    preferred_language: "en",
+                    email_verified: true,
+                  });
+                  navigate("/buyer/home", { replace: true });
+                }}
+                className="w-full rounded-xl border border-[#C5A66D] bg-white/40 py-3 text-sm font-semibold hover:bg-white/60 transition"
+              >
+                Continue as guest
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setIsRegister(!isRegister); setError(""); setUnverifiedEmail(null); setResendNotice(null); }}
+                className="mt-3 block w-full text-center text-xs font-semibold text-[#66493E] hover:underline"
+              >
+                {isRegister ? "Already have an account? Sign In" : "New to KalaSetu? Create an account"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -2875,12 +4309,15 @@ function BuyerArtisan() {
 }
 
 function AppRoutes() {
+  const { startSession } = useSession();
   return (
     <Routes>
       <Route path="/" element={<RoleSelection />} />
       <Route path="/seller" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/buyer/login" element={<BuyerLogin />} />
+      <Route path="/auth/callback" element={<AuthCallback onSessionStart={startSession} />} />
+      <Route path="/verification-success" element={<AuthCallback onSessionStart={startSession} />} />
 
       {/* Seller Studio Authenticated Routes */}
       <Route element={<Shell />}>
@@ -2891,6 +4328,7 @@ function AppRoutes() {
         <Route path="/add-product/studio" element={<Navigate to="/add-product/enhance" replace />} />
         <Route path="/add-product/catalogue" element={<GuidedProduct step="catalogue" />} />
         <Route path="/add-product/story" element={<GuidedProduct step="story" />} />
+        <Route path="/add-product/craft-story" element={<GuidedProduct step="story" />} />
         <Route path="/add-product/pricing" element={<GuidedProduct step="pricing" />} />
         <Route path="/add-product/similarity" element={<GuidedProduct step="similarity" />} />
         <Route path="/add-product/review" element={<GuidedProduct step="review" />} />
