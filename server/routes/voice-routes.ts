@@ -1,10 +1,11 @@
 import { Router, Response } from "express";
 import { requireSellerAuth, AuthenticatedRequest } from "../middleware/auth";
 import { audioMemoryUpload } from "../middleware/upload";
-import { geminiService } from "../services/gemini";
 import { voiceRepository, productRepository } from "../db/repository";
 
 export const voiceRouter = Router();
+
+const WHISPER_API_URL = process.env.WHISPER_API_URL || "http://127.0.0.1:8000/api/speech/transcribe";
 
 voiceRouter.post(
   "/transcribe",
@@ -13,31 +14,67 @@ voiceRouter.post(
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const sellerId = req.seller!.id;
-      const { languageHint, draftId, audioBase64, mimeType } = req.body;
+      const { languageHint, draftId, audioBase64, mimeType, directTranscript } = req.body;
 
-      let buffer: Buffer;
-      let effectiveMime = "audio/webm";
+      const langNames: Record<string, string> = {
+        hi: "Hindi",
+        pa: "Punjabi",
+        ta: "Tamil",
+        te: "Telugu",
+        en: "English"
+      };
 
-      if (req.file) {
-        buffer = req.file.buffer;
-        effectiveMime = req.file.mimetype || "audio/webm";
-      } else if (audioBase64) {
-        const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, "");
-        buffer = Buffer.from(cleanBase64, "base64");
-        effectiveMime = mimeType || "audio/webm";
+      const effectiveLangCode = languageHint && langNames[languageHint] ? languageHint : "hi";
+      const effectiveLangName = langNames[effectiveLangCode] || "Hindi";
+
+      let finalTranscription = "";
+      let finalDetectedCode = effectiveLangCode;
+      let finalLanguageName = effectiveLangName;
+
+      if (directTranscript && typeof directTranscript === "string" && directTranscript.trim()) {
+        finalTranscription = directTranscript.trim();
       } else {
-        // If simulated or empty audio sent from test, return language-appropriate craft description
-        const result = await geminiService.transcribeAudio(Buffer.alloc(0), "audio/webm", languageHint || "hi");
-        res.json({
-          message: "Voice understood",
-          transcription: result.transcription,
-          detectedLanguage: result.detectedLanguage,
-          languageName: result.languageName,
-        });
-        return;
-      }
+        let buffer: Buffer | null = null;
+        let effectiveMime = "audio/webm";
 
-      const result = await geminiService.transcribeAudio(buffer, effectiveMime, languageHint || "hi");
+        if (req.file) {
+          buffer = req.file.buffer;
+          effectiveMime = req.file.mimetype || "audio/webm";
+        } else if (audioBase64) {
+          const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, "");
+          buffer = Buffer.from(cleanBase64, "base64");
+          effectiveMime = mimeType || "audio/webm";
+        }
+
+        if (buffer && buffer.length > 0) {
+          // Local faster-whisper STT service
+          const formData = new FormData();
+          const audioBlob = new Blob([buffer], { type: effectiveMime });
+          const fileExt = effectiveMime.includes("wav") ? "audio.wav" : "audio.webm";
+          formData.append("file", audioBlob, fileExt);
+          formData.append("language", effectiveLangCode);
+
+          const whisperRes = await fetch(WHISPER_API_URL, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!whisperRes.ok) {
+            const errText = await whisperRes.text();
+            throw new Error(`Local Whisper service error (${whisperRes.status}): ${errText}`);
+          }
+
+          const whisperData = (await whisperRes.json()) as {
+            transcript: string;
+            language: string;
+            language_name: string;
+          };
+
+          finalTranscription = whisperData.transcript || "";
+          finalDetectedCode = whisperData.language || effectiveLangCode;
+          finalLanguageName = whisperData.language_name || effectiveLangName;
+        }
+      }
 
       // Save record in database
       const voiceRecordId = `rec-${Date.now()}`;
@@ -46,24 +83,15 @@ voiceRouter.post(
         seller_id: sellerId,
         product_id: draftId,
         audio_url: `audio-recording-${voiceRecordId}`,
-        detected_language: result.detectedLanguage,
-        transcription: result.transcription,
+        detected_language: finalDetectedCode,
+        transcription: finalTranscription,
       });
-
-      // If draftId provided, update draft's description / cultural story
-      if (draftId) {
-        productRepository.upsertDraft({
-          id: draftId,
-          seller_id: sellerId,
-          description: result.transcription,
-        });
-      }
 
       res.json({
         message: "Voice understood and transcribed",
-        transcription: result.transcription,
-        detectedLanguage: result.detectedLanguage,
-        languageName: result.languageName,
+        transcription: finalTranscription,
+        detectedLanguage: finalDetectedCode,
+        languageName: finalLanguageName,
       });
     } catch (error: any) {
       console.error("Audio transcription error:", error);
