@@ -1,4 +1,4 @@
-const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "/api";
+﻿const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 export const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
 
 /**
@@ -12,7 +12,7 @@ export const API_BASE = RAW_API_BASE.replace(/\/+$/, "");
  */
 export function getMediaUrl(path: string | null | undefined): string {
   if (!path) return "";
-  // Already absolute — nothing to do
+  // Already absolute â€” nothing to do
   if (
     path.startsWith("http://") ||
     path.startsWith("https://") ||
@@ -99,6 +99,22 @@ export const api = {
     logout() {
       setToken(null);
       return request<{ message: string }>("/auth/logout", { method: "POST" });
+    },
+    async syncSupabase(user: any, password?: string) {
+      const email = user?.email || "";
+      const metadata = user?.user_metadata || {};
+      const name = metadata.name || email.split("@")[0] || "Artisan";
+      const craft_tradition = metadata.craft_tradition || "Heritage Craft";
+      try {
+        return await api.auth.login(email, password);
+      } catch {
+        return await api.auth.register({
+          name,
+          email,
+          password: password || "artisan123",
+          craft_tradition,
+        });
+      }
     },
   },
 
@@ -329,3 +345,4 @@ export const api = {
     },
   },
 };
+

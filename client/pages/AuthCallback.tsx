@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Leaf, CheckCircle2, AlertCircle, ArrowRight, RefreshCw, Mail } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { api } from "../lib/api-client";
 
 interface AuthCallbackProps {
   onSessionStart?: (token: string, user: any) => void;
@@ -97,12 +96,6 @@ export function AuthCallback({ onSessionStart }: AuthCallbackProps) {
           return;
         }
 
-        // Synchronize verified user with KalaSetu backend repository
-        try {
-          await api.auth.syncSupabase(user);
-        } catch (syncErr) {
-          console.warn("Backend sync notice:", syncErr);
-        }
 
         // CRITICAL: DO NOT automatically log the user in!
         // Clear Supabase session and local tokens so user must manually sign in

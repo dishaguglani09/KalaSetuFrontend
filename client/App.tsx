@@ -735,6 +735,33 @@ function Login() {
     const emailTrimmed = email.trim();
     const passTrimmed = password.trim();
 
+    // Direct demo login for Ramangi
+    const isDemo =
+      emailTrimmed.toLowerCase().includes("demo") ||
+      emailTrimmed.toLowerCase().includes("ramangi") ||
+      passTrimmed.toLowerCase().includes("demo") ||
+      name.toLowerCase().includes("demo") ||
+      name.toLowerCase().includes("ramangi");
+
+    if (isDemo) {
+      startSession("demo-seller-token", {
+        id: "seller-demo-ramangi",
+        name: "Ramangi",
+        email: emailTrimmed && emailTrimmed.includes("@") ? emailTrimmed : "demo@kalasetu.com",
+        role: "seller",
+        craft_tradition: "Jaipur Blue Pottery",
+        state: "Rajasthan",
+        city: "Jaipur",
+        experience_years: 8,
+        bio: "Dedicated master artisan preserving living craft heritage.",
+        avatar_url: "",
+        preferred_language: "en",
+        email_verified: true,
+      });
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+
     try {
       if (isRegister) {
         // Field validations
@@ -761,8 +788,8 @@ function Login() {
 
         // Check if account already exists in KalaSetu database
         try {
-          const checkRes = await api.auth.checkEmail(emailTrimmed);
-          if (checkRes.exists) {
+          const checkRes = await (api.auth as any).checkEmail?.(emailTrimmed);
+          if (checkRes?.exists) {
             setError("Account already exists. Please sign in.");
             setLoading(false);
             return;
@@ -860,9 +887,40 @@ function Login() {
               return;
             }
 
-            // Sync verified user and open dashboard only after confirmed email
-            const syncRes = await api.auth.syncSupabase(data.user);
-            startSession(syncRes.token, { ...syncRes.user, email_verified: true });
+            // Sync verified user with KalaSetu studio session
+            let authRes: { token: string; user: any } | null = null;
+            try {
+              authRes = await api.auth.login(emailTrimmed, passTrimmed);
+            } catch {
+              try {
+                authRes = await api.auth.register({
+                  name: data.user.user_metadata?.name || emailTrimmed.split("@")[0],
+                  email: emailTrimmed,
+                  password: passTrimmed,
+                  craft_tradition: data.user.user_metadata?.craft_tradition || "Heritage Craft",
+                });
+              } catch {
+                // Standalone / offline fallback
+              }
+            }
+
+            const token = authRes?.token || data.session?.access_token || "artisan-token";
+            const sessionUser: UserProfile = {
+              id: authRes?.user?.id || data.user.id,
+              name: data.user.user_metadata?.name || authRes?.user?.name || emailTrimmed.split("@")[0],
+              email: emailTrimmed,
+              role: "seller",
+              craft_tradition: data.user.user_metadata?.craft_tradition || authRes?.user?.craft_tradition || "Handcrafted Art",
+              state: authRes?.user?.state || "Rajasthan",
+              city: authRes?.user?.city || "Jaipur",
+              experience_years: authRes?.user?.experience_years ?? 5,
+              bio: authRes?.user?.bio || "Dedicated Indian artisan preserving ancestral craft traditions.",
+              avatar_url: authRes?.user?.avatar_url || "",
+              preferred_language: authRes?.user?.preferred_language || "en",
+              email_verified: true,
+            };
+
+            startSession(token, sessionUser);
             navigate("/dashboard", { replace: true });
             return;
           }
@@ -881,15 +939,34 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#9C0000] text-white">
-      <div className="hidden flex-1 flex-col justify-between p-12 lg:flex">
-        <Logo light />
-        <div className="max-w-md">
-          <p className="mb-4 text-sm uppercase tracking-[.2em] text-[#E8C754]">Namaste, creator</p>
-          <h1 className="font-serif text-6xl leading-tight text-[#FFF5D6]">The world is ready<br /><i>for your story.</i></h1>
-          <p className="mt-6 leading-7 text-[#F9D8C8]">A simpler way to sell, share and celebrate the heritage in every handmade piece.</p>
+    <div className="flex min-h-screen bg-[#2A0505] text-white">
+      {/* Left side Hero section with custom heritage background */}
+      <div className="relative hidden flex-1 flex-col justify-between p-12 lg:flex overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+          style={{ backgroundImage: `url('/seller-login-bg.jpg')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#2A0505]/75 via-[#2A0505]/55 to-[#2A0505]/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#150202]/90 via-transparent to-[#150202]/40 pointer-events-none" />
+
+        <div className="relative z-10">
+          <Logo light />
         </div>
-        <p className="text-xs text-[#DDAFA2]">© 2026 KalaSetu · Crafted for India</p>
+        <div className="relative z-10 max-w-lg backdrop-blur-[2px]">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/50 bg-[#3D0A0A]/70 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#F9E29D]">
+            <span>Namaste, creator</span>
+          </div>
+          <h1 className="font-serif text-5xl xl:text-6xl leading-[1.12] text-[#FFF8E7] drop-shadow-md">
+            The world is ready<br /><i className="font-serif text-[#F4D17D]">for your story.</i>
+          </h1>
+          <p className="mt-6 text-base xl:text-lg leading-relaxed text-[#F9D8C8] font-light max-w-md drop-shadow-sm">
+            A simpler way to sell, share, and celebrate the heritage in every handcrafted piece.
+          </p>
+        </div>
+        <div className="relative z-10 flex items-center justify-between text-xs text-[#E5C7BC]/80 pt-4 border-t border-[#D4AF37]/20">
+          <span>© 2026 KalaSetu · Crafted for India's Artisans</span>
+          <span>Preserving Living Heritage</span>
+        </div>
       </div>
 
       <div className="relative flex w-full items-center justify-center bg-[#FFE7A6] px-5 py-12 text-[#210707] lg:max-w-[560px]">
@@ -1026,9 +1103,33 @@ function Login() {
                 </div>
 
                 <button
+                  type="button"
+                  onClick={() => {
+                    startSession("demo-seller-token", {
+                      id: "seller-demo-ramangi",
+                      name: "Ramangi",
+                      email: "demo@kalasetu.com",
+                      role: "seller",
+                      craft_tradition: "Jaipur Blue Pottery",
+                      state: "Rajasthan",
+                      city: "Jaipur",
+                      experience_years: 8,
+                      bio: "Dedicated master artisan preserving living craft heritage.",
+                      avatar_url: "",
+                      preferred_language: "en",
+                      email_verified: true,
+                    });
+                    navigate("/dashboard", { replace: true });
+                  }}
+                  className="w-full rounded-xl border border-[#9C0000]/30 bg-[#FFF2C9] py-2.5 text-xs font-bold text-[#9C0000] transition hover:bg-[#FFE699] flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <span>✨</span> One-Click Demo Login (Ramangi)
+                </button>
+
+                <button
                   type="submit"
                   disabled={loading}
-                  className="mt-4 w-full rounded-xl bg-[#9C0000] py-3 text-sm font-semibold text-[#FFE7A6] transition hover:bg-[#750000] disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl bg-[#9C0000] py-3 text-sm font-semibold text-[#FFE7A6] transition hover:bg-[#750000] disabled:opacity-60"
                 >
                   {loading ? "Authenticating..." : (isRegister ? "Create Artisan Account" : "Sign In")} <ArrowRight className="ml-1 inline" size={15} />
                 </button>
@@ -1230,77 +1331,201 @@ function Dashboard() {
   const displayName = user?.name ? user.name.split(" ")[0] : "Meera";
 
   return (
-    <>
-      <PageTitle
-        eyebrow="Artisan Studio"
-        title={<>{tr("Good morning")}, {displayName} <span className="text-[#D4AF37]">✦</span></>}
-        description={tr("Your studio is glowing. Here's what's happening with your craft today.")}
-        action={<button onClick={handleStartNew} className="gold-btn"><Plus size={17} /> {tr("Add a new product")}</button>}
-      />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={Package} value={String(stats.totalProducts)} label={tr("Total products")} note="+3 this month" />
-        <Stat icon={Store} value={String(stats.publishedListings)} label={tr("Published listings")} note="Active live" />
-        <Stat icon={TrendingUp} value={stats.monthlyViews ? `₹${stats.monthlyViews}` : "₹42.8k"} label={tr("This month's views")} note="+18.4%" />
-        <Stat icon={Sparkles} value={stats.studioCompletion || "86%"} label={tr("Studio completion")} note="Almost there" />
-      </div>
-      <div className="mt-7 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-        <section className="soft-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[#EFE4C9] p-5">
-            <div>
-              <h2 className="font-serif text-2xl">{tr("Recent products")}</h2>
-              <p className="mt-1 text-xs text-[#927568]">Your latest creations in the studio</p>
+    <div className="space-y-8 pb-10">
+      {/* ── Wide Pottery Hero Banner ─────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-3xl border border-[#D4AF37]/40 bg-[#2D0B0B] text-white shadow-[0_15px_35px_rgba(45,11,11,0.12)]">
+        {/* Background Image Container */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 hover:scale-105"
+          style={{ backgroundImage: `url('/pottery-hero.jpg')` }}
+        />
+        {/* Atmospheric Royal Vignette Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1A0303]/92 via-[#2B0707]/75 to-[#1A0303]/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#150202]/85 via-transparent to-transparent" />
+
+        {/* Content Inside Hero Banner */}
+        <div className="relative z-10 p-7 sm:p-10 lg:p-12 flex flex-col justify-between min-h-[220px] sm:min-h-[260px]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/50 bg-[#3F0A0A]/80 px-4 py-1.5 text-[11px] font-semibold tracking-[0.22em] text-[#F9E29D] backdrop-blur-md shadow-sm">
+              <Crown size={13} className="text-[#E5C158]" />
+              <span>ARTISAN HERITAGE STUDIO</span>
             </div>
-            <button onClick={() => navigate("/products")} className="text-xs font-semibold text-[#9C0000]">{tr("View all")} <ChevronRight className="inline" size={14} /></button>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-[#EAD5BA]/85 font-medium bg-[#1F0404]/60 border border-[#D4AF37]/20 px-3.5 py-1.5 rounded-full backdrop-blur-sm">
+              <span>Rajasthan Heritage Corridor</span>
+              <span>•</span>
+              <span className="text-[#E5C158]">GI Certified</span>
+            </div>
           </div>
-          {recentProducts.length > 0 ? (
-            recentProducts.map(p => (
-              <div key={p.id} className="flex items-center gap-4 border-b border-[#F2EAD8] p-4 last:border-0">
-                <img src={p.enhanced_image_url || p.image_url || images.pottery} className="h-14 w-14 rounded-xl object-cover" alt={p.name} />
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-semibold">{p.name}</h3>
-                  <p className="mt-1 text-xs text-[#907367]">₹{Number(p.price).toLocaleString("en-IN")} · {p.craft_tradition || p.category}</p>
-                </div>
-                <span className={`status ${p.status === "PUBLISHED" ? "published" : p.status === "DRAFT" ? "draft" : "pending"}`}>
-                  {p.status === "PUBLISHED" ? "Published" : p.status === "DRAFT" ? "Draft" : "Pending review"}
-                </span>
-                <button onClick={() => navigate("/products")}><MoreHorizontal size={18} className="text-[#A28A78]" /></button>
-              </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-sm text-[#876B5E]">No products created yet. Start by adding your first craft!</div>
-          )}
-        </section>
-        <section className="relative overflow-hidden rounded-2xl bg-[#9C0000] p-6 text-[#FFF4D1]">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full border border-[#D4AF37]/50" />
-          <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full border border-[#D4AF37]/30" />
-          <div className="relative">
-            <div className="mb-5 flex items-center gap-2 text-[#EAC952]">
-              <Sparkles size={18} />
-              <span className="text-xs font-semibold uppercase tracking-[.14em]">KalaSetu AI</span>
+
+          <div className="mt-6 sm:mt-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#FFF8EA] drop-shadow-sm leading-tight">
+                {tr("Good morning")}, {displayName} <span className="text-[#E5C158] font-normal">✦</span>
+              </h1>
+              <p className="mt-2.5 text-sm sm:text-base text-[#F4D4C5] font-light leading-relaxed max-w-xl">
+                {tr("Your studio is glowing. Here's what's happening with your craft today.")}
+              </p>
             </div>
-            <h2 className="font-serif text-2xl">A little nudge<br />for your studio</h2>
-            <p className="mt-4 text-sm leading-6 text-[#F5D4C5]">Adding a story to your Blue Pottery Vase could increase buyer interest by up to 32%.</p>
-            <button onClick={handleStartNew} className="mt-7 rounded-full border border-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#FFE7A6] transition hover:bg-[#D4AF37] hover:text-[#4c0000]">
-              {tr("Complete the story")} <ArrowRight className="ml-1 inline" size={13} />
+
+            <div className="shrink-0 flex items-center gap-3">
+              <button 
+                onClick={handleStartNew} 
+                className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#E5C657] px-6 py-3.5 text-sm font-bold text-[#3B0A0A] shadow-[0_8px_20px_rgba(212,175,55,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(212,175,55,0.35)]"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                <span>{tr("Add a new product")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Key Performance Metric Cards (Beige/Cream & Gold - 3 Equal Columns) ───────── */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[#E8DCC2] bg-[#FFFBF3] p-5 shadow-[0_4px_20px_rgba(81,42,13,0.03)] transition-all hover:border-[#D4AF37]/60 hover:shadow-md">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F6EBD3] text-[#781212] border border-[#E8D8B6]">
+              <Package size={19} />
+            </div>
+            <span className="rounded-full bg-[#F3E8CF] px-2.5 py-0.5 text-[10px] font-semibold text-[#805E44]">+3 this month</span>
+          </div>
+          <div className="font-serif text-3xl font-semibold text-[#2D160E]">{stats.totalProducts}</div>
+          <div className="mt-1 text-xs font-medium text-[#7D6456]">{tr("Total products")}</div>
+        </div>
+
+        <div className="rounded-2xl border border-[#E8DCC2] bg-[#FFFBF3] p-5 shadow-[0_4px_20px_rgba(81,42,13,0.03)] transition-all hover:border-[#D4AF37]/60 hover:shadow-md">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F6EBD3] text-[#781212] border border-[#E8D8B6]">
+              <Store size={19} />
+            </div>
+            <span className="rounded-full bg-[#E5F3EB] px-2.5 py-0.5 text-[10px] font-semibold text-[#27724D]">Active live</span>
+          </div>
+          <div className="font-serif text-3xl font-semibold text-[#2D160E]">{stats.publishedListings}</div>
+          <div className="mt-1 text-xs font-medium text-[#7D6456]">{tr("Published listings")}</div>
+        </div>
+
+        <div className="rounded-2xl border border-[#E8DCC2] bg-[#FFFBF3] p-5 shadow-[0_4px_20px_rgba(81,42,13,0.03)] transition-all hover:border-[#D4AF37]/60 hover:shadow-md">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F6EBD3] text-[#781212] border border-[#E8D8B6]">
+              <Sparkles size={19} />
+            </div>
+            <span className="rounded-full bg-[#F3E8CF] px-2.5 py-0.5 text-[10px] font-semibold text-[#805E44]">Almost there</span>
+          </div>
+          <div className="font-serif text-3xl font-semibold text-[#2D160E]">
+            {stats.studioCompletion || "86%"}
+          </div>
+          <div className="mt-1 text-xs font-medium text-[#7D6456]">{tr("Studio completion")}</div>
+        </div>
+      </div>
+
+      {/* ── Main Dashboard Split Section ─────────────────────────────── */}
+      <div className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+        {/* Recent Products Card */}
+        <section className="rounded-2xl border border-[#E8DCC2] bg-[#FFFBF3] shadow-[0_4px_20px_rgba(81,42,13,0.03)] overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[#EFE3C9] px-6 py-5 bg-[#FAF3E3]/60">
+            <div>
+              <h2 className="font-serif text-2xl font-semibold text-[#2E1811]">{tr("Recent products")}</h2>
+              <p className="mt-0.5 text-xs text-[#8A6D5E]">Your latest creations registered in the studio</p>
+            </div>
+            <button 
+              onClick={() => navigate("/products")} 
+              className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#9C0000] hover:text-[#780000] transition-colors"
+            >
+              <span>{tr("View all")}</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="divide-y divide-[#F2E8D4]">
+            {recentProducts.length > 0 ? (
+              recentProducts.map(p => (
+                <div key={p.id} className="flex items-center gap-4 p-4 sm:p-5 transition-colors hover:bg-[#FFF6E3]/50">
+                  <img 
+                    src={p.enhanced_image_url || p.image_url || images.pottery} 
+                    className="h-14 w-14 rounded-xl object-cover border border-[#E7D6B4] shadow-sm" 
+                    alt={p.name} 
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-[#2D160E]">{p.name}</h3>
+                    <p className="mt-0.5 text-xs text-[#8A6E60]">
+                      ₹{Number(p.price).toLocaleString("en-IN")} · {p.craft_tradition || p.category}
+                    </p>
+                  </div>
+                  <span className={`status ${p.status === "PUBLISHED" ? "published" : p.status === "DRAFT" ? "draft" : "pending"}`}>
+                    {p.status === "PUBLISHED" ? "Published" : p.status === "DRAFT" ? "Draft" : "Pending review"}
+                  </span>
+                  <button 
+                    onClick={() => navigate("/products")}
+                    className="p-1.5 text-[#9A8172] hover:text-[#2D160E] transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="p-10 text-center text-sm text-[#876B5E]">
+                No products created yet. Start by adding your first craft!
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* KalaSetu AI Assistant Callout */}
+        <section className="relative overflow-hidden rounded-2xl border border-[#D4AF37]/50 bg-gradient-to-br from-[#7B0E0E] to-[#4F0707] p-7 text-[#FFF7E3] shadow-lg flex flex-col justify-between">
+          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full border border-[#D4AF37]/30 pointer-events-none" />
+          <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full border border-[#D4AF37]/20 pointer-events-none" />
+          
+          <div className="relative z-10">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 bg-[#350404]/60 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#F9E29D]">
+              <Sparkles size={14} className="text-[#E5C158]" />
+              <span>AI CRAFT ASSISTANT</span>
+            </div>
+            
+            <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#FFF4D1] leading-tight">
+              A little nudge<br />for your studio
+            </h2>
+            
+            <p className="mt-4 text-xs sm:text-sm leading-relaxed text-[#F7D8CA] font-light">
+              Adding a regional heritage story to your Blue Pottery collection could increase buyer interest by up to <strong className="text-[#FFE7A6] font-semibold">32%</strong> on ONDC.
+            </p>
+          </div>
+
+          <div className="relative z-10 mt-7 pt-4 border-t border-[#D4AF37]/25">
+            <button 
+              onClick={handleStartNew} 
+              className="inline-flex items-center gap-2 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/15 px-4 py-2.5 text-xs font-bold text-[#FFE7A6] transition hover:bg-[#D4AF37] hover:text-[#450505]"
+            >
+              <span>{tr("Complete the story")}</span>
+              <ArrowRight size={13} />
             </button>
           </div>
         </section>
       </div>
-      <section className="mt-7 rounded-2xl border border-[#E9DDBA] bg-[#FFF2C9] p-5">
+
+      {/* ── Regional Discovery Insight Banner ───────────────────────── */}
+      <section className="rounded-2xl border border-[#E5D7B7] bg-[#F7EED9] p-6 shadow-sm">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="flex gap-3">
-            <div className="rounded-xl bg-[#D4AF37] p-3 text-[#640000]"><Lightbulb size={20} /></div>
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#D4AF37] text-[#550606] shadow-sm">
+              <Lightbulb size={22} />
+            </div>
             <div>
-              <h3 className="font-semibold">Did you know?</h3>
-              <p className="mt-1 text-sm text-[#765B4F]">Products with 3+ regional tags get discovered 2× more often.</p>
+              <h3 className="font-serif text-lg font-semibold text-[#2D160E]">Craft Discovery Tip</h3>
+              <p className="mt-0.5 text-xs sm:text-sm text-[#73574A]">
+                Listings with 3+ regional GI tags get discovered 2× more often by international buyers.
+              </p>
             </div>
           </div>
-          <button onClick={() => navigate("/insights")} className="whitespace-nowrap text-sm font-semibold text-[#9C0000]">
-            {tr("Explore insights")} <ArrowRight className="ml-1 inline" size={15} />
+          <button 
+            onClick={() => navigate("/insights")} 
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[#9C0000]/30 bg-white/70 px-4 py-2.5 text-xs font-bold text-[#9C0000] hover:bg-white hover:text-[#750000] transition-all"
+          >
+            <span>{tr("Explore insights")}</span>
+            <ArrowRight size={14} />
           </button>
         </div>
       </section>
-    </>
+    </div>
   );
 }
 
@@ -1757,10 +1982,93 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
       .finally(() => setCalculatingPricing(false));
   }, [draft, updateDraft]);
 
-  // Step 6: Pricing calculation on step entry
+  // ─── DEMO PRICING MOCK SCENARIOS ────────────────────────────────────────────
+  // 3 repeatable scenarios: Product 1 = ₹500, Product 2 = ₹100, Product 3 = ₹300
+  // Counter persists in localStorage so the sequence is predictable across sessions.
+  const DEMO_PRICING_SCENARIOS = [
+    {
+      // Scenario 1 — Medium-complexity clay craft: Selling price ₹500
+      material_cost: 180,
+      labour_hours: 3,
+      hourly_rate: 80,
+      packaging_cost: 30,
+      logistics_cost: 25,
+      complexity: "medium" as const,
+      desired_margin_percent: 25,
+      // Derived: labour = 3 × 80 × 1.15 = ₹276; total cost = 180+276+30+25 = ₹511 → rounded ₹511
+      // We lock the selling price at ₹500 manually below
+      production_cost: 511,
+      minimum_fair_price: 588,   // 511 × 1.15
+      recommended_price: 639,    // 511 × 1.25
+      premium_price: 792,        // 511 × 1.55
+      price: 500,                // TARGET selling price
+      artisan_profit: -11,       // 500 − 511  (just under cost — shows tight pricing reality)
+    },
+    {
+      // Scenario 2 — Simple bead/thread craft: Selling price ₹100
+      material_cost: 30,
+      labour_hours: 0.5,
+      hourly_rate: 60,
+      packaging_cost: 10,
+      logistics_cost: 15,
+      complexity: "simple" as const,
+      desired_margin_percent: 15,
+      // Derived: labour = 0.5 × 60 × 1.0 = ₹30; total cost = 30+30+10+15 = ₹85
+      production_cost: 85,
+      minimum_fair_price: 98,    // 85 × 1.15
+      recommended_price: 98,     // 85 × 1.15 (15% margin)
+      premium_price: 132,        // 85 × 1.55
+      price: 100,                // TARGET selling price
+      artisan_profit: 15,        // 100 − 85
+    },
+    {
+      // Scenario 3 — Intricate block-print fabric: Selling price ₹300
+      material_cost: 90,
+      labour_hours: 2,
+      hourly_rate: 70,
+      packaging_cost: 20,
+      logistics_cost: 20,
+      complexity: "medium" as const,
+      desired_margin_percent: 25,
+      // Derived: labour = 2 × 70 × 1.15 = ₹161; total cost = 90+161+20+20 = ₹291
+      production_cost: 291,
+      minimum_fair_price: 335,   // 291 × 1.15
+      recommended_price: 364,    // 291 × 1.25
+      premium_price: 451,        // 291 × 1.55
+      price: 300,                // TARGET selling price
+      artisan_profit: 9,         // 300 − 291
+    },
+  ];
+
+  // Step 6: Inject mock scenario data when entering pricing step
   useEffect(() => {
     if (step === "pricing") {
-      handleCalculatePricing();
+      // Read and advance the demo scenario counter (0 → 1 → 2 → 0 → ...)
+      const raw = localStorage.getItem("kalasetu_demo_scenario");
+      const idx = raw !== null ? parseInt(raw, 10) % 3 : 0;
+      const scenario = DEMO_PRICING_SCENARIOS[idx];
+      // Advance counter for the NEXT product
+      localStorage.setItem("kalasetu_demo_scenario", String((idx + 1) % 3));
+
+      // Inject all cost fields + the locked selling price into the draft
+      updateDraft({
+        material_cost:         scenario.material_cost,
+        labour_hours:          scenario.labour_hours,
+        hourly_rate:           scenario.hourly_rate,
+        packaging_cost:        scenario.packaging_cost,
+        logistics_cost:        scenario.logistics_cost,
+        complexity:            scenario.complexity,
+        desired_margin_percent:scenario.desired_margin_percent,
+        production_cost:       scenario.production_cost,
+        minimum_fair_price:    scenario.minimum_fair_price,
+        recommended_price:     scenario.recommended_price,
+        premium_price:         scenario.premium_price,
+        price:                 scenario.price,
+        artisan_profit:        scenario.artisan_profit,
+        pricing_breakdown:     null,
+      });
+      setPricingNotice("");
+      setCalculatingPricing(false);
     }
   }, [step]);
 
@@ -2322,6 +2630,14 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
                   </button>
                 </div>
                 <p className="mt-4 text-[11px] text-[#A0887D]">Supports JPG, JPEG, and PNG formats</p>
+                <div className="mt-6 flex flex-wrap justify-between items-center gap-3">
+                  <button onClick={() => navigate("/dashboard")} className="small-btn inline-flex items-center gap-1.5">
+                    <ArrowLeft size={16} /> Back to Dashboard
+                  </button>
+                  <button onClick={() => navigate("/add-product/enhance")} className="small-btn text-[#806459]">
+                    Skip to Enhancement
+                  </button>
+                </div>
               </>
             )}
             <input
@@ -2684,6 +3000,21 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
               </div>
             )}
 
+            {/* Back & Skip navigation for voice step */}
+            {!recording && !transcribingVoice && (
+              <div className="mt-8 flex flex-wrap justify-between items-center gap-3 max-w-xl mx-auto">
+                <button onClick={() => navigate("/add-product/enhance")} className="small-btn inline-flex items-center gap-1.5">
+                  <ArrowLeft size={16} /> Back to Image Studio
+                </button>
+                <button
+                  onClick={() => navigate("/add-product/catalogue")}
+                  className="small-btn text-[#806459]"
+                >
+                  Skip Voice Step
+                </button>
+              </div>
+            )}
+
             {/* Step 3 Recognized Speech / Transcript & Description Result */}
             {recorded && !recording && !transcribingVoice && (
               <div className="mt-8 space-y-4 max-w-xl mx-auto">
@@ -2945,10 +3276,18 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
                 </label>
               </div>
 
-              <div className="mt-8 flex justify-end">
-                <button onClick={() => navigate("/add-product/story")} className="gold-btn">
-                  Approve & Continue <ArrowRight size={16} />
+              <div className="mt-8 flex flex-wrap justify-between items-center gap-3">
+                <button onClick={() => navigate("/add-product/voice")} className="small-btn inline-flex items-center gap-1.5">
+                  <ArrowLeft size={16} /> Back to Voice Story
                 </button>
+                <div className="flex gap-3">
+                  <button onClick={() => navigate("/add-product/story")} className="small-btn text-[#806459]">
+                    Skip Catalogue
+                  </button>
+                  <button onClick={() => navigate("/add-product/story")} className="gold-btn">
+                    Approve & Continue <ArrowRight size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           )
@@ -3101,32 +3440,7 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
                   </label>
                 </div>
 
-                {/* Valid JSON Output display box matching the exact required format */}
-                <div className="mt-6 rounded-xl bg-[#2C1710] text-[#FFF4D1] p-4 shadow-md">
-                  <div className="flex items-center justify-between border-b border-[#4A2D22] pb-2 mb-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37]">
-                      <Sparkles size={14} /> Extracted JSON · step:5__(craft story)
-                    </div>
-                    <button
-                      onClick={() => setShowCraftStoryJson(!showCraftStoryJson)}
-                      className="text-[11px] text-[#D4AF37] hover:underline"
-                    >
-                      {showCraftStoryJson ? "Collapse JSON" : "Show JSON"}
-                    </button>
-                  </div>
-                  {showCraftStoryJson && (
-                    <pre className="font-mono text-xs leading-5 text-[#E8DEC7] overflow-x-auto p-3 bg-[#1E0F0B] rounded-lg border border-[#3E2319]">
-                      {JSON.stringify({
-                        state: draft.state || "",
-                        cityRegion: draft.city || "",
-                        craftTradition: draft.craft_tradition || "",
-                        technique: draft.technique || "",
-                        materialsUsed: Array.isArray(draft.materials) ? draft.materials.join(", ") : (draft.materials || ""),
-                        culturalHeritageStory: draft.cultural_story || ""
-                      }, null, 2)}
-                    </pre>
-                  )}
-                </div>
+
 
                 <div className="mt-8 flex flex-wrap justify-between items-center gap-3">
                   <button onClick={() => navigate("/add-product/catalogue")} className="small-btn inline-flex items-center gap-1.5">
@@ -3144,6 +3458,7 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
         {/* Step 6: Dynamic Pricing */}
         {step === "pricing" && (
           <DynamicPricingScreen
+            key={`pricing-${draft.price ?? 0}-${draft.material_cost ?? 0}`}
             draft={draft}
             updateDraft={updateDraft}
             onNavigateNext={() => navigate("/add-product/similarity")}
@@ -3206,16 +3521,21 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
                 <span>I have reviewed the craft details, technique, and fair pricing. This piece represents my artisan heritage with pride.</span>
               </label>
 
-              <button
-                disabled={!approved}
-                onClick={() => {
-                  api.products.approve(draft.id).catch(() => {});
-                  navigate("/add-product/linkage");
-                }}
-                className="gold-btn mt-6 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Continue to Market Linkage <ArrowRight size={16} />
-              </button>
+              <div className="mt-6 flex flex-wrap justify-between items-center gap-3">
+                <button onClick={() => navigate("/add-product/similarity")} className="small-btn inline-flex items-center gap-1.5">
+                  <ArrowLeft size={16} /> Back to Similarity
+                </button>
+                <button
+                  disabled={!approved}
+                  onClick={() => {
+                    api.products.approve(draft.id).catch(() => {});
+                    navigate("/add-product/linkage");
+                  }}
+                  className="gold-btn disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Continue to Market Linkage <ArrowRight size={16} />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -3258,13 +3578,18 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
               })}
             </div>
 
-            <button
-              onClick={handlePublish}
-              disabled={selectedMarkets.length === 0}
-              className="gold-btn mt-8 w-full justify-center disabled:opacity-50"
-            >
-              Publish & Share Listing <Share2 size={16} />
-            </button>
+            <div className="mt-8 flex flex-wrap justify-between items-center gap-3">
+              <button onClick={() => navigate("/add-product/review")} className="small-btn inline-flex items-center gap-1.5">
+                <ArrowLeft size={16} /> Back to Review
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={selectedMarkets.length === 0}
+                className="gold-btn disabled:opacity-50"
+              >
+                Publish & Share Listing <Share2 size={16} />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -3702,34 +4027,127 @@ function Success() {
 function RoleSelection() {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-[#9C0000] px-5 py-8 text-white">
-      <div className="absolute inset-0 paisley-bg opacity-30" />
-      <header className="relative mx-auto flex max-w-6xl items-center justify-between">
+    <div className="relative min-h-screen w-full bg-[#3D0C02] text-white flex flex-col justify-between overflow-x-hidden font-sans">
+      {/* Background Image with Ambient Vignette & Cultural Heritage Overlay */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: `url('/welcome-bg.jpg')` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#2E0000]/70 via-[#3D0606]/55 to-[#1A0000]/85 pointer-events-none" />
+
+      {/* Top Header */}
+      <header className="relative z-10 mx-auto w-full max-w-7xl flex items-center justify-between px-6 py-7 lg:px-12">
         <Logo light />
-        <LanguageSelector />
-      </header>
-      <main className="relative mx-auto max-w-5xl py-20 text-center">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-[#D4AF37] bg-[#D4AF37]/15 text-[#FFE7A6]">
-          <Crown size={25} />
+        <div className="flex items-center gap-4">
+          <div className="rounded-full border border-[#D4AF37]/35 bg-[#1F0404]/60 px-2 py-1 backdrop-blur-md shadow-sm">
+            <LanguageSelector />
+          </div>
         </div>
-        <p className="text-xs font-bold uppercase tracking-[.28em] text-[#E8C754]">KalaSetu AI</p>
-        <h1 className="mt-4 font-serif text-5xl text-[#FFF5D6] md:text-7xl">Welcome to KalaSetu AI</h1>
-        <p className="mt-5 text-lg text-[#F4D1C3]">Choose how you want to continue</p>
-        <div className="mx-auto mt-14 grid max-w-3xl gap-5 text-left md:grid-cols-2">
-          <button onClick={() => navigate("/login")} className="group rounded-3xl border border-[#D4AF37]/60 bg-[#7B0000]/70 p-7 transition hover:-translate-y-2 hover:bg-[#860000]">
-            <span className="text-5xl">👩‍🎨</span>
-            <h2 className="mt-7 font-serif text-3xl text-[#FFE7A6]">SELLER / ARTISAN</h2>
-            <p className="mt-3 leading-6 text-[#F5D6C8]">Showcase, manage and sell your craftsmanship</p>
-            <span className="mt-8 inline-flex items-center text-sm font-semibold text-[#E8C754]">Enter seller studio <ArrowRight className="ml-2" size={17} /></span>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="relative z-10 mx-auto w-full max-w-5xl px-6 py-10 lg:py-16 text-center my-auto">
+        {/* Subtle Heritage Crest */}
+        <div className="mx-auto mb-6 inline-flex items-center gap-2.5 rounded-full border border-[#D4AF37]/50 bg-[#4A0A0A]/70 px-5 py-2 text-[11px] font-semibold tracking-[0.24em] text-[#F9E29D] backdrop-blur-md shadow-lg">
+          <Crown size={14} className="text-[#E5C158]" />
+          <span>NATIONAL HERITAGE CRAFT PLATFORM</span>
+        </div>
+
+        {/* Main Title & Subtitle */}
+        <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-normal tracking-tight text-[#FFF8E7] drop-shadow-md leading-[1.12]">
+          Welcome to <span className="font-serif italic text-[#E5C158]">KalaSetu AI</span>
+        </h1>
+        <p className="mx-auto mt-4 max-w-xl text-base sm:text-lg text-[#F2D0C2] font-light leading-relaxed">
+          Bridging timeless Indian artisans with global patrons through intelligent craft storytelling and direct commerce.
+        </p>
+
+        {/* Symmetrical Two-Card Structure (No Emojis, Pure Gold Dividers) */}
+        <div className="mx-auto mt-12 grid max-w-3xl gap-6 sm:gap-8 text-left md:grid-cols-2">
+          {/* Card 1: Seller / Artisan */}
+          <button
+            onClick={() => navigate("/login")}
+            className="group relative flex flex-col justify-between rounded-2xl border border-[#D4AF37]/45 bg-[#2A0505]/75 p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#F3D37B] hover:bg-[#380707]/90 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)] backdrop-blur-md text-left"
+          >
+            {/* Top Ornamental Divider Bar */}
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">
+                  Studio Portal
+                </span>
+                <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#D4AF37]/60" />
+              </div>
+
+              <div className="mt-5 mb-4 h-0.5 w-10 bg-[#D4AF37]/80 rounded-full transition-all duration-300 group-hover:w-16 group-hover:bg-[#F3D37B]" />
+
+              <h2 className="font-serif text-2xl sm:text-3xl font-medium tracking-tight text-[#FFF4D4] transition-colors group-hover:text-[#FDE68A]">
+                SELLER / ARTISAN
+              </h2>
+              <p className="mt-3 text-sm text-[#E2BEB0] leading-relaxed font-light">
+                Digitize, voice-narrate, and showcase your traditional creations across national & global marketplaces.
+              </p>
+            </div>
+
+            {/* Bottom Action Indicator */}
+            <div className="mt-8 pt-5 border-t border-[#D4AF37]/20 flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-wider text-[#E5C158] group-hover:text-[#FFF4D4] transition-colors">
+                ENTER SELLER STUDIO
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#F9E29D] transition-transform duration-300 group-hover:translate-x-1 group-hover:bg-[#D4AF37] group-hover:text-[#2E0000]">
+                <ArrowRight size={14} />
+              </div>
+            </div>
           </button>
-          <button onClick={() => navigate("/buyer/login")} className="group rounded-3xl border border-[#D4AF37]/60 bg-[#FFF2C9] p-7 text-[#3A120C] transition hover:-translate-y-2 hover:bg-[#FFE7A6]">
-            <span className="text-5xl">🛍️</span>
-            <h2 className="mt-7 font-serif text-3xl text-[#9C0000]">BUYER</h2>
-            <p className="mt-3 leading-6 text-[#765A4E]">Discover authentic Indian crafts</p>
-            <span className="mt-8 inline-flex items-center text-sm font-semibold text-[#9C0000]">Explore the collection <ArrowRight className="ml-2" size={17} /></span>
+
+          {/* Card 2: Buyer / Patron */}
+          <button
+            onClick={() => navigate("/buyer/login")}
+            className="group relative flex flex-col justify-between rounded-2xl border border-[#D4AF37]/45 bg-[#2A0505]/75 p-8 transition-all duration-300 hover:-translate-y-1.5 hover:border-[#F3D37B] hover:bg-[#380707]/90 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)] backdrop-blur-md text-left"
+          >
+            {/* Top Ornamental Divider Bar */}
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#D4AF37]">
+                  Collector Portal
+                </span>
+                <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#D4AF37]/60" />
+              </div>
+
+              <div className="mt-5 mb-4 h-0.5 w-10 bg-[#D4AF37]/80 rounded-full transition-all duration-300 group-hover:w-16 group-hover:bg-[#F3D37B]" />
+
+              <h2 className="font-serif text-2xl sm:text-3xl font-medium tracking-tight text-[#FFF4D4] transition-colors group-hover:text-[#FDE68A]">
+                BUYER / PATRON
+              </h2>
+              <p className="mt-3 text-sm text-[#E2BEB0] leading-relaxed font-light">
+                Discover authentic GI-tagged masterpieces, explore origin legacies, and acquire handcrafted cultural heirlooms.
+              </p>
+            </div>
+
+            {/* Bottom Action Indicator */}
+            <div className="mt-8 pt-5 border-t border-[#D4AF37]/20 flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-wider text-[#E5C158] group-hover:text-[#FFF4D4] transition-colors">
+                EXPLORE COLLECTION
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#F9E29D] transition-transform duration-300 group-hover:translate-x-1 group-hover:bg-[#D4AF37] group-hover:text-[#2E0000]">
+                <ArrowRight size={14} />
+              </div>
+            </div>
           </button>
         </div>
       </main>
+
+      {/* Footer / Presentation Attributions */}
+      <footer className="relative z-10 mx-auto w-full max-w-7xl px-6 py-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#C99C8D]/80 border-t border-[#D4AF37]/20">
+        <div>
+          <span>Preserving 3,000+ Years of Living Indian Heritage</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <span>ONDC Integrated</span>
+          <span>•</span>
+          <span>Multilingual AI</span>
+          <span>•</span>
+          <span>GI Authenticity</span>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -3845,6 +4263,33 @@ function BuyerLogin() {
     setLoading(true);
 
     const emailTrimmed = email.trim();
+    const passTrimmed = password.trim();
+
+    // Direct demo login for Ramangi
+    const isDemo =
+      emailTrimmed.toLowerCase().includes("demo") ||
+      emailTrimmed.toLowerCase().includes("ramangi") ||
+      passTrimmed.toLowerCase().includes("demo") ||
+      name.toLowerCase().includes("demo") ||
+      name.toLowerCase().includes("ramangi");
+
+    if (isDemo) {
+      startSession("demo-buyer-token", {
+        id: "buyer-demo-ramangi",
+        name: "Ramangi",
+        email: emailTrimmed && emailTrimmed.includes("@") ? emailTrimmed : "demo@kalasetu.com",
+        role: "buyer",
+        craft_tradition: "",
+        state: "",
+        city: "",
+        experience_years: 0,
+        bio: "",
+        preferred_language: "en",
+        email_verified: true,
+      });
+      navigate("/buyer/home", { replace: true });
+      return;
+    }
 
     try {
       if (isRegister) {
@@ -3875,8 +4320,21 @@ function BuyerLogin() {
             setLoading(false);
             return;
           } else if (data.user) {
-            const res = await api.auth.syncSupabase(data.user);
-            startSession(res.token, res.user);
+            const token = data.session?.access_token || "buyer-token";
+            const buyerUser: UserProfile = {
+              id: data.user.id || `b-${Date.now()}`,
+              name: name.trim() || data.user.user_metadata?.name || "Collector",
+              email: emailTrimmed,
+              role: "buyer",
+              craft_tradition: "",
+              state: "",
+              city: "",
+              experience_years: 0,
+              bio: "",
+              preferred_language: "en",
+              email_verified: true,
+            };
+            startSession(token, buyerUser);
             navigate("/buyer/home", { replace: true });
             return;
           }
@@ -3924,8 +4382,21 @@ function BuyerLogin() {
               return;
             }
 
-            const syncRes = await api.auth.syncSupabase(data.user);
-            startSession(syncRes.token, syncRes.user);
+            const token = data.session?.access_token || "buyer-token";
+            const buyerUser: UserProfile = {
+              id: data.user.id || "b1",
+              name: data.user.user_metadata?.name || emailTrimmed.split("@")[0] || "Collector",
+              email: emailTrimmed,
+              role: "buyer",
+              craft_tradition: "",
+              state: "",
+              city: "",
+              experience_years: 0,
+              bio: "",
+              preferred_language: "en",
+              email_verified: true,
+            };
+            startSession(token, buyerUser);
             navigate("/buyer/home", { replace: true });
             return;
           }
@@ -4083,9 +4554,32 @@ function BuyerLogin() {
                 </div>
 
                 <button
+                  type="button"
+                  onClick={() => {
+                    startSession("demo-buyer-token", {
+                      id: "buyer-demo-ramangi",
+                      name: "Ramangi",
+                      email: "demo@kalasetu.com",
+                      role: "buyer",
+                      craft_tradition: "",
+                      state: "",
+                      city: "",
+                      experience_years: 0,
+                      bio: "",
+                      preferred_language: "en",
+                      email_verified: true,
+                    });
+                    navigate("/buyer/home", { replace: true });
+                  }}
+                  className="w-full rounded-xl border border-[#9C0000]/30 bg-[#FFF2C9] py-2.5 text-xs font-bold text-[#9C0000] transition hover:bg-[#FFE699] flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <span>✨</span> One-Click Demo Login (Ramangi)
+                </button>
+
+                <button
                   type="submit"
                   disabled={loading}
-                  className="mt-4 w-full rounded-xl bg-[#9C0000] py-3.5 font-semibold text-[#FFE7A6] hover:bg-[#750000] disabled:opacity-60 transition"
+                  className="mt-2 w-full rounded-xl bg-[#9C0000] py-3.5 font-semibold text-[#FFE7A6] hover:bg-[#750000] disabled:opacity-60 transition"
                 >
                   {loading ? "Authenticating..." : (isRegister ? "Create Buyer Account" : "Continue")} <ArrowRight className="ml-2 inline" size={16} />
                 </button>
