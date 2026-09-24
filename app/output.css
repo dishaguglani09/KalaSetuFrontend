@@ -1,0 +1,4770 @@
+/* ─────────────────────────────────────────────────────────────
+   KALAKRITI — handmade-paper ground, Madhubani base theme.
+
+   Every colour below is a *theme slot*. The landing page rewrites
+   these slots on the container element as the selected state
+   changes; because the colour slots are registered with @property,
+   the whole page cross-fades between regional palettes instead of
+   snapping. Fonts are self-hosted via next/font (see app/layout.tsx).
+───────────────────────────────────────────────────────────── */
+
+@property --kk-paper      {
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #FFFBF2;
+}
+
+@property --kk-paper-deep {
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #F7EEDD;
+}
+
+@property --kk-ink        {
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #3A1F0E;
+}
+
+@property --kk-accent     {
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #C4361B;
+}
+
+@property --kk-secondary  {
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #D9A21B;
+}
+
+@property --kk-tertiary   {
+  syntax: '<color>';
+
+  inherits: true;
+
+  initial-value: #1F5C6E;
+}
+
+:root {
+  /* ── Active theme (Madhubani defaults) ── */
+  --kk-paper:      #FFFBF2;
+  /* unbleached handmade paper */
+  --kk-paper-deep: #F7EEDD;
+  /* the same sheet, one wash deeper */
+  --kk-ink:        #3A1F0E;
+  /* kajal — the lamp-black outline */
+  --kk-ink-soft:   rgba(58, 31, 14, 0.62);
+  --kk-accent:     #C4361B;
+  /* sindoor red */
+  --kk-secondary:  #D9A21B;
+  /* haldi yellow */
+  --kk-tertiary:   #1F5C6E;
+  /* indigo-teal */
+  --kk-line:       rgba(160, 90, 40, 0.20);
+  /* ── Typography ──
+     Four display registers; --kk-font-display points at whichever the
+     active state's tradition calls for. */
+  --font-classic-stack: var(--font-classic), 'Cormorant Garamond', Georgia, serif;
+  --font-royal-stack:   var(--font-royal),   'Rozha One', Georgia, serif;
+  --font-temple-stack:  var(--font-temple),  'Marcellus', Georgia, serif;
+  --font-folk-stack:    var(--font-folk),    'Yatra One', Georgia, serif;
+  --font-deva-stack:    var(--font-deva), 'Tiro Devanagari Hindi',
+                        'Noto Serif Devanagari', 'Noto Sans Devanagari', serif;
+  --font-sans-stack:    var(--font-sans), 'Inter', system-ui, sans-serif;
+  /* Indic scripts beyond Devanagari fall through to the platform's Noto set. */
+  --font-indic-stack:   var(--font-deva), 'Noto Serif', 'Noto Sans',
+                        system-ui, sans-serif;
+  --kk-font-display: var(--font-classic-stack);
+  /* ── Legacy tokens, kept so older components keep resolving ── */
+  --bg:            var(--kk-paper);
+  --bg-paper:      var(--kk-paper);
+  --bg-cream:      var(--kk-paper-deep);
+  --bg-ochre:      #F0E2C6;
+  --text:          var(--kk-ink);
+  --text-primary:  var(--kk-ink);
+  --text-secondary: var(--kk-ink-soft);
+  --text-muted:    rgba(58, 31, 14, 0.42);
+  --text-dim:      rgba(58, 31, 14, 0.42);
+  --text-on-indigo: #FFFBF2;
+  --accent:        var(--kk-accent);
+  --indigo:        var(--kk-tertiary);
+  --border:        var(--kk-line);
+  --border-medium: rgba(160, 90, 40, 0.34);
+  --shadow-md: 0 4px 24px rgba(120, 60, 20, 0.08);
+  --shadow-lg: 0 12px 48px rgba(120, 60, 20, 0.12);
+  --pad: clamp(1.25rem, 5vw, 4.5rem);
+  --container-pad: var(--pad);
+  --max: 1320px;
+  --container-max: var(--max);
+  --ease:     cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --theme-swap: 700ms;
+  /* Entrance pacing for the state panel. */
+  --stagger: 0.06s;
+  --settle:  0.5s;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESET
+───────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  /* The map writes the active theme's slots here; because they are registered
+     with @property, the whole document cross-fades between regional palettes. */
+  transition:
+    --kk-paper var(--theme-swap) var(--ease),
+    --kk-paper-deep var(--theme-swap) var(--ease),
+    --kk-ink var(--theme-swap) var(--ease),
+    --kk-accent var(--theme-swap) var(--ease),
+    --kk-secondary var(--theme-swap) var(--ease),
+    --kk-tertiary var(--theme-swap) var(--ease);
+}
+
+body {
+  background: var(--kk-paper);
+  color: var(--kk-ink);
+  font-family: var(--font-sans-stack);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background var(--theme-swap) var(--ease);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TYPOGRAPHY
+───────────────────────────────────────────────────────────── */
+
+.display {
+  font-family: var(--kk-font-display);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.heading {
+  font-family: var(--kk-font-display);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.label {
+  font-family: var(--font-sans-stack);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--kk-ink-soft);
+}
+
+.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+}
+
+/* Devanagari / Sanskrit lines — set a touch larger, since Indic scripts
+   carry more vertical detail than Latin at the same nominal size. */
+
+.kk-deva {
+  font-family: var(--font-deva-stack);
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+/* Non-Devanagari Indic scripts (Tamil, Telugu, Bengali, Gurmukhi, …). */
+
+.kk-indic {
+  font-family: var(--font-indic-stack);
+  line-height: 1.6;
+}
+
+.kk-display {
+  font-family: var(--kk-font-display);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+
+.kk-label {
+  font-family: var(--font-sans-stack);
+  font-weight: 500;
+  font-size: 0.6rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.kk-roman {
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   NAV
+───────────────────────────────────────────────────────────── */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  height: 62px;
+  padding-left:  max(var(--pad), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--pad), env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  pointer-events: none;
+}
+
+.nav > * {
+  pointer-events: auto;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-family: var(--kk-font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--kk-ink);
+  text-decoration: none;
+  transition: color var(--theme-swap) var(--ease);
+}
+
+.nav-logo-deva {
+  font-family: var(--font-deva-stack);
+  font-size: 1.05rem;
+  color: var(--kk-accent);
+  transition: color var(--theme-swap) var(--ease);
+}
+
+.nav-tagline {
+  display: none;
+  /* restored at 641px */
+  font-family: var(--font-deva-stack);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: var(--kk-ink-soft);
+  opacity: 0.75;
+}
+
+.nav-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* The region currently open, named in the bar itself. Hidden on phones,
+   where it would push the States button off-screen. */
+
+.nav-current {
+  display: none;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--kk-accent);
+  transition: color var(--theme-swap) var(--ease);
+}
+
+.nav-current-name {
+  font-family: var(--kk-font-display);
+  font-size: 1rem;
+  color: var(--kk-ink);
+}
+
+.nav-current-art {
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--kk-accent);
+}
+
+.nav-menu-btn {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-sans-stack);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--kk-ink);
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--kk-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kk-paper) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color 0.22s var(--ease), border-color 0.22s var(--ease);
+}
+
+.nav-menu-btn:hover,
+.nav-menu-btn:focus-visible {
+  color: var(--kk-accent);
+  border-color: color-mix(in srgb, var(--kk-accent) 45%, transparent);
+}
+
+.nav-menu-btn:focus-visible {
+  outline: 2px solid var(--kk-accent);
+  outline-offset: 3px;
+}
+
+.nav-caret {
+  transition: transform 0.25s var(--ease);
+}
+
+.nav-caret[data-open='true'] {
+  transform: rotate(180deg);
+}
+
+/* ── State menu ─────────────────────────────────────────────────────────── */
+
+.nav-menu {
+  /* Phones get a full-width sheet under the bar; it becomes an anchored
+     dropdown from 641px up. */
+  position: fixed;
+  top: 62px;
+  right: 0;
+  left: 0;
+  z-index: 210;
+  width: auto;
+  max-height: calc(100dvh - 62px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.1rem 1.3rem 1.4rem;
+  background: color-mix(in srgb, var(--kk-paper) 97%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--kk-line);
+  border-top: 2px solid color-mix(in srgb, var(--kk-accent) 45%, transparent);
+  box-shadow: 0 18px 60px rgba(90, 45, 10, 0.16);
+  animation: kk-drift-up 0.2s var(--ease-out) both;
+}
+
+.nav-menu-all {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: block;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.7rem;
+  width: 100%;
+  border-bottom: 1px solid var(--kk-line);
+  font-family: var(--font-sans-stack);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--kk-ink-soft);
+  transition: color 0.2s var(--ease);
+}
+
+.nav-menu-all:hover, .nav-menu-all:focus-visible {
+  color: var(--kk-accent);
+}
+
+.nav-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1.2rem 1.8rem;
+}
+
+.nav-menu-label {
+  color: var(--kk-accent);
+  margin-bottom: 0.4rem;
+  opacity: 0.8;
+}
+
+.nav-menu-list {
+  list-style: none;
+}
+
+.nav-menu-item {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  width: 100%;
+  /* Without this the nowrap craft label pushes the row past its column. */
+  min-width: 0;
+  padding: 0.32rem 0.45rem;
+  border-radius: 3px;
+  border-left: 2px solid transparent;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+
+.nav-menu-item:hover,
+.nav-menu-item:focus-visible,
+.nav-menu-item[data-active='true'] {
+  background: color-mix(in srgb, var(--row) 9%, transparent);
+  border-left-color: var(--row);
+}
+
+.nav-menu-item:focus-visible {
+  outline: 2px solid var(--row);
+  outline-offset: 1px;
+}
+
+/* Marks the rows that open a dedicated state page rather than selecting on
+   the map, so the two behaviours are not silently mixed. */
+
+.nav-menu-go {
+  margin-left: auto;
+  padding-left: 0.3rem;
+  color: var(--row);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+}
+
+.nav-menu-item:hover .nav-menu-go,
+.nav-menu-item:focus-visible .nav-menu-go {
+  opacity: 1;
+  transform: none;
+}
+
+/* On touch there is no hover to reveal it, so it is simply always shown. */
+
+@media (pointer: coarse) {
+  .nav-menu-go {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The motif sits on the baseline with the name, so give it its own alignment. */
+
+.nav-menu-motif {
+  align-self: center;
+  flex-shrink: 0;
+  color: var(--row);
+  opacity: 0.75;
+}
+
+.nav-menu-name {
+  font-family: var(--font-classic-stack);
+  font-size: 1rem;
+  color: var(--kk-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-menu-art {
+  font-family: var(--font-sans-stack);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kk-ink-soft);
+  opacity: 0.75;
+  display: none;
+  /* shown from 641px up */
+  margin-left: auto;
+  padding-left: 0.5rem;
+  /* Long craft names give way rather than spilling into the next column. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 641px) {
+  .nav-tagline {
+    display: inline;
+  }
+
+  .nav-current {
+    display: flex;
+  }
+
+  .nav-menu-art {
+    display: inline;
+  }
+
+  .nav-menu {
+    position: absolute;
+    top: calc(100% + 0.7rem);
+    left: auto;
+    width: min(52rem, calc(100vw - 2rem));
+    max-height: min(72vh, 34rem);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LANDING — theme surface
+───────────────────────────────────────────────────────────── */
+
+.kk-stage {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--kk-paper);
+  color: var(--kk-ink);
+  transition: background var(--theme-swap) var(--ease),
+              color var(--theme-swap) var(--ease);
+}
+
+/* Pigment washes + paper grain. Sits under the map, over the canvas. */
+
+.kk-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 108%, color-mix(in srgb, var(--kk-accent) 12%, transparent) 0%, transparent 68%),
+    radial-gradient(ellipse 55% 45% at 12% 8%,  color-mix(in srgb, var(--kk-secondary) 11%, transparent) 0%, transparent 62%),
+    radial-gradient(ellipse 55% 45% at 92% 22%, color-mix(in srgb, var(--kk-tertiary) 10%, transparent) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, transparent 0, transparent 100%);
+  transition: background var(--theme-swap) var(--ease);
+}
+
+/* Fibre texture of handmade paper — two offset dot fields. */
+
+.kk-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(120, 70, 30, 0.055) 1px, transparent 0),
+    radial-gradient(circle at 1px 1px, rgba(120, 70, 30, 0.035) 1px, transparent 0);
+  background-size: 7px 7px, 13px 13px;
+  background-position: 0 0, 4px 6px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LANDING — hero
+───────────────────────────────────────────────────────────── */
+
+.kk-hero {
+  position: absolute;
+  top: clamp(72px, 11vh, 118px);
+  left: var(--pad);
+  z-index: 4;
+  right: var(--pad);
+  pointer-events: none;
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+
+.kk-hero[data-hidden='true'] {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.kk-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--kk-accent);
+  margin-bottom: 0.85rem;
+}
+
+.kk-hero-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, currentColor, transparent);
+  opacity: 0.45;
+}
+
+.kk-hero-title {
+  font-family: var(--kk-font-display);
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  font-weight: 300;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--kk-ink);
+  transition: color var(--theme-swap) var(--ease), font-family var(--theme-swap) step-end;
+}
+
+.kk-hero-deva {
+  font-family: var(--font-deva-stack);
+  font-size: clamp(1.15rem, 2.6vw, 1.6rem);
+  color: var(--kk-accent);
+  margin-top: 0.5rem;
+  letter-spacing: 0.04em;
+}
+
+.kk-hero-lede {
+  margin-top: 1.1rem;
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: clamp(0.8rem, 1.5vw, 0.92rem);
+  line-height: 1.85;
+  color: var(--kk-ink-soft);
+  max-width: 26rem;
+  display: none;
+  /* restored at the 781px breakpoint */
+}
+
+.kk-hero-hint {
+  margin-top: 1.4rem;
+  color: var(--kk-ink-soft);
+  opacity: 0.7;
+}
+
+@media (min-width: 781px) {
+  .kk-hero {
+    right: auto;
+    max-width: min(30rem, 72vw);
+  }
+
+  .kk-hero-lede {
+    display: block;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LANDING — corner ornaments
+───────────────────────────────────────────────────────────── */
+
+.kk-corner {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  color: var(--kk-accent);
+  opacity: 0.14;
+  transition: color var(--theme-swap) var(--ease), opacity 0.6s var(--ease);
+}
+
+.kk-corner--tr {
+  top: 4rem;
+  right: 1rem;
+  opacity: 0.1;
+}
+
+.kk-corner--bl,
+.kk-corner--br {
+  display: none;
+}
+
+.kk-corner--br {
+  color: var(--kk-tertiary);
+}
+
+.kk-spin-slow {
+  animation: kk-spin 70s linear infinite;
+}
+
+.kk-breathe   {
+  animation: kk-breathe 7s ease-in-out infinite;
+}
+
+@media (min-width: 901px) {
+  .kk-corner--tr {
+    top: 4.5rem;
+    right: 2.5rem;
+    opacity: 0.11;
+  }
+
+  .kk-corner--bl {
+    display: block;
+    bottom: 3rem;
+    left: 2.5rem;
+  }
+
+  .kk-corner--br {
+    display: block;
+    bottom: 4rem;
+    right: 3.5rem;
+    opacity: 0.12;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LANDING — controls
+───────────────────────────────────────────────────────────── */
+
+.kk-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-family: var(--font-sans-stack);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--kk-ink-soft);
+  padding: 0.55rem 0.95rem;
+  background: color-mix(in srgb, var(--kk-paper) 82%, transparent);
+  border: 1px solid var(--kk-line);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color 0.22s var(--ease), border-color 0.22s var(--ease),
+              background 0.22s var(--ease);
+}
+
+.kk-btn:hover,
+.kk-btn:focus-visible {
+  color: var(--kk-accent);
+  border-color: color-mix(in srgb, var(--kk-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--kk-paper) 95%, transparent);
+}
+
+.kk-btn:focus-visible {
+  outline: 2px solid var(--kk-accent);
+  outline-offset: 3px;
+}
+
+.kk-back {
+  position: absolute;
+  top: 4.6rem;
+  left: max(var(--pad), env(safe-area-inset-left, 0px));
+  z-index: 6;
+  /* Redundant on a phone: the panel carries its own close control, and two
+     buttons crowd a narrow row. */
+  display: none;
+}
+
+@media (min-width: 641px) {
+  .kk-back {
+    display: block;
+  }
+}
+
+/* While the showcase is running the panel has ~2.5s per state, so the text
+   settles in faster and the palette cross-fade shortens to match. */
+
+.kk-stage[data-tour='true'] {
+  --stagger: 0.032s;
+  --settle:  0.34s;
+  --theme-swap: 420ms;
+}
+
+/* Showcase readout, mirroring the back button on the opposite side. */
+
+.kk-tour {
+  position: absolute;
+  top: 4.6rem;
+  right: max(var(--pad), env(safe-area-inset-right, 0px));
+  z-index: 6;
+}
+
+.kk-tour-btn {
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kk-hoverlabel {
+  position: absolute;
+  bottom: 2.4rem;
+  left: var(--pad);
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+  align-items: baseline;
+  gap: 0.7rem;
+  animation: kk-drift-up 0.22s var(--ease-out) both;
+}
+
+/* Only where a pointer can actually hover — never on touch. */
+
+@media (hover: hover) and (min-width: 641px) {
+  .kk-hoverlabel {
+    display: flex;
+  }
+}
+
+.kk-hoverlabel-name {
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+  color: var(--kk-ink);
+}
+
+.kk-hoverlabel-art {
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--kk-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LANDING — state panel
+───────────────────────────────────────────────────────────── */
+
+.kk-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  transform: translateY(100%);
+  transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1);
+  background: color-mix(in srgb, var(--kk-paper) 94%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 -8px 48px rgba(90, 45, 10, 0.10);
+  max-height: 62vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.kk-panel[data-open='true'] {
+  transform: translateY(0);
+}
+
+.kk-panel-patti {
+  display: block;
+  opacity: 0.55;
+  border-top: 1.5px solid color-mix(in srgb, var(--kk-accent) 40%, transparent);
+}
+
+/* `currentColor` inside an SVG <pattern> does not re-resolve when the theme
+   changes, so the patti's strokes are bound to the variable directly. */
+
+.kk-panel-patti path {
+  stroke: var(--kk-accent);
+  transition: stroke var(--theme-swap) var(--ease);
+}
+
+.kk-panel-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.1rem;
+  align-items: start;
+  /* The inset keeps content clear of the home indicator on notched phones. */
+  padding: 1.6rem var(--pad) calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  max-width: 100%;
+}
+
+/* The state's own motif, ghosted behind the panel content. */
+
+.kk-panel-watermark {
+  position: absolute;
+  top: 50%;
+  right: clamp(1rem, 6vw, 5rem);
+  transform: translateY(-50%);
+  color: var(--kk-accent);
+  opacity: 0.11;
+  pointer-events: none;
+  display: none;
+  /* shown from 901px up */
+}
+
+.kk-panel-col {
+  min-width: 0;
+}
+
+.kk-panel-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--kk-accent);
+  margin-bottom: 0.5rem;
+}
+
+.kk-panel-name {
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.9rem, 4.5vw, 2.9rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--kk-ink);
+}
+
+.kk-panel-script {
+  margin-top: 0.5rem;
+  font-size: 1.05rem;
+  color: var(--kk-accent);
+}
+
+.kk-panel-translit {
+  margin-top: 0.15rem;
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--kk-ink-soft);
+}
+
+.kk-panel-desc {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.82rem;
+  line-height: 1.9;
+  color: var(--kk-ink-soft);
+}
+
+/* ── Shloka ─────────────────────────────────────────────────────────────
+   Set as a quotation: the Sanskrit line leads, with transliteration,
+   sense, and source stepping down in weight beneath it. */
+
+.kk-shloka {
+  margin-top: 1rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid color-mix(in srgb, var(--kk-accent) 35%, transparent);
+  transition: border-color var(--theme-swap) var(--ease);
+}
+
+.kk-shloka-line {
+  font-size: 1.12rem;
+  line-height: 1.5;
+  color: var(--kk-accent);
+  transition: color var(--theme-swap) var(--ease);
+}
+
+.kk-shloka-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.kk-shloka-roman {
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: 0.8rem;
+  color: var(--kk-ink-soft);
+}
+
+.kk-shloka-meaning {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.76rem;
+  color: var(--kk-ink-soft);
+}
+
+.kk-shloka-source {
+  font-family: var(--font-sans-stack);
+  font-style: normal;
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kk-ink-soft);
+  opacity: 0.65;
+}
+
+.kk-panel-art {
+  margin-bottom: 0.7rem;
+  font-family: var(--kk-font-display);
+  font-size: 1.15rem;
+  color: var(--kk-ink);
+}
+
+.kk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kk-chip {
+  font-family: var(--font-classic-stack);
+  font-size: 0.92rem;
+  color: var(--kk-ink-soft);
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--kk-line);
+  border-radius: 999px;
+  transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.kk-chip--lead {
+  color: var(--kk-accent);
+  font-weight: 500;
+  border-color: color-mix(in srgb, var(--kk-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--kk-accent) 6%, transparent);
+}
+
+.kk-panel-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+}
+
+.kk-rule {
+  align-self: stretch;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--kk-line), transparent);
+}
+
+@media (min-width: 901px) {
+  .kk-panel-body {
+    grid-template-columns: minmax(11rem, 15rem) 1fr minmax(12rem, 18rem);
+    gap: clamp(1.5rem, 4vw, 3rem);
+    padding-bottom: 2rem;
+  }
+
+  .kk-panel-watermark {
+    display: block;
+  }
+
+  .kk-panel {
+    max-height: min(54vh, 30rem);
+  }
+}
+
+/* Landscape phones: 62vh of a 390px-tall screen leaves the map no room.
+   Declared after the block above so it wins the cascade. */
+
+@media (max-height: 520px) {
+  .kk-panel {
+    max-height: 46vh;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TOUCH
+   Everything above is sized for a mouse. On a coarse pointer the
+   controls grow to a 44px minimum target, and the browser's own
+   gestures are kept off the map so pan and pinch reach d3 instead.
+───────────────────────────────────────────────────────────── */
+
+.kk-map {
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (pointer: coarse) {
+  /* 44px is the smallest reliably tappable target. `display` is deliberately
+     not set here: .kk-back is also a .kk-btn and must stay hidden on phones. */
+
+  .kk-btn,
+  .nav-menu-btn {
+    padding: 0.65rem 1rem;
+    min-height: 44px;
+  }
+
+  .kk-panel-close {
+    padding: 0.5rem;
+    font-size: 1rem;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .nav-menu-item {
+    padding: 0.7rem 0.5rem;
+  }
+
+  .nav-menu-all {
+    padding-top: 0.4rem;
+    padding-bottom: 0.9rem;
+  }
+
+  .nav-logo {
+    padding: 0.5rem 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ISLAND WATER
+   Rings spreading out from the Andamans and Lakshadweep. Kept to
+   a hairline and a whisper of opacity — the islands are small,
+   and the water should read as movement, not decoration.
+───────────────────────────────────────────────────────────── */
+
+.kk-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: kk-ripple 7.2s var(--ease-out) infinite;
+}
+
+/* When the territory itself is open, the water comes up a little. */
+
+.kk-ripples[data-island].is-open .kk-ripple {
+  animation-duration: 5.4s;
+}
+
+.kk-ripples.is-open {
+  --ripple-peak: 0.42;
+}
+
+@keyframes kk-ripple {
+  0%   {
+    transform: scale(1);
+    opacity: 0;
+  }
+
+  15%  {
+    opacity: var(--ripple-peak, 0.24);
+  }
+
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PANEL TEXT ENTRANCE
+   The panel slides up as one surface; its contents then settle in
+   sequence — identity, story, shloka, crafts — so a state arrives
+   as a small reveal rather than a block of text appearing at once.
+───────────────────────────────────────────────────────────── */
+
+/* Only the leaf elements animate — animating the columns too would
+   compound the fades and muddy the timing.
+
+   Every delay is a multiple of --stagger, so the whole sequence tightens
+   when the showcase is running and each state is held only briefly. */
+
+.kk-panel-body > .kk-panel-col > * {
+  animation: kk-settle var(--settle, 0.5s) var(--ease-out) both;
+}
+
+/* The lines step down in turn. */
+
+.kk-panel-col > .kk-panel-kicker   {
+  animation-delay: calc(var(--stagger) * 1.7);
+}
+
+.kk-panel-col > .kk-panel-name     {
+  animation-delay: calc(var(--stagger) * 2.7);
+}
+
+.kk-panel-col > .kk-panel-script   {
+  animation-delay: calc(var(--stagger) * 4);
+}
+
+.kk-panel-col > .kk-panel-translit {
+  animation-delay: calc(var(--stagger) * 5);
+}
+
+.kk-panel-col > .kk-panel-desc     {
+  animation-delay: calc(var(--stagger) * 3);
+}
+
+.kk-panel-col > .kk-shloka         {
+  animation-delay: calc(var(--stagger) * 5);
+}
+
+.kk-panel-col > .kk-panel-art      {
+  animation-delay: calc(var(--stagger) * 3.7);
+}
+
+.kk-panel-col > .kk-chips          {
+  animation-delay: calc(var(--stagger) * 4.7);
+}
+
+/* Craft chips arrive one after another, left to right. */
+
+.kk-chip {
+  animation: kk-settle calc(var(--settle, 0.5s) * 0.84) var(--ease-out) both;
+}
+
+.kk-chip:nth-child(1) {
+  animation-delay: calc(var(--stagger) * 5.7);
+}
+
+.kk-chip:nth-child(2) {
+  animation-delay: calc(var(--stagger) * 6.7);
+}
+
+.kk-chip:nth-child(3) {
+  animation-delay: calc(var(--stagger) * 7.7);
+}
+
+.kk-chip:nth-child(4) {
+  animation-delay: calc(var(--stagger) * 8.7);
+}
+
+.kk-chip:nth-child(5) {
+  animation-delay: calc(var(--stagger) * 9.7);
+}
+
+/* The motif behind the panel fades up last. */
+
+.kk-panel-watermark {
+  animation: kk-watermark 0.9s var(--ease-out) both;
+  animation-delay: 0.24s;
+}
+
+@keyframes kk-settle {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+
+  to   {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kk-watermark {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.94);
+  }
+
+  to   {
+    opacity: 0.11;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+/* Call to action into a state's own page, shown only for states that have one. */
+
+.kk-panel-explore {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 40px;
+  margin-top: 0.9rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  background: var(--kk-accent);
+  color: var(--kk-paper);
+  font-family: var(--font-sans-stack);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: filter 0.2s var(--ease);
+}
+
+.kk-panel-explore:hover {
+  filter: brightness(0.92);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   STATE PAGE  (/state/<slug>)
+   Mobile-first: these are the phone rules; min-width queries
+   below widen them. Colour comes only from theme slots, which the
+   page sets on its own wrapper.
+───────────────────────────────────────────────────────────── */
+
+.kk-st {
+  position: relative;
+  background: var(--kk-paper);
+  color: var(--kk-ink);
+  padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Paper grain, as on the landing stage. */
+
+.kk-st::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(120, 70, 30, 0.05) 1px, transparent 0),
+    radial-gradient(circle at 1px 1px, rgba(120, 70, 30, 0.03) 1px, transparent 0);
+  background-size: 7px 7px, 13px 13px;
+  background-position: 0 0, 4px 6px;
+}
+
+.kk-st > * {
+  position: relative;
+}
+
+/* The bar is transparent by design over the landing map. A state page
+   scrolls text underneath it, so there it needs a ground. Scoped with :has so
+   the landing is untouched; browsers without :has simply keep the old bar. */
+
+body:has(.kk-st) .nav {
+  background: color-mix(in srgb, var(--kk-paper) 90%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--kk-line);
+}
+
+/* ── Scroll reveal ────────────────────────────────────────────────
+   One observer sets [data-in] on the container; the children ride in
+   on a stagger ladder. Only transform and opacity, so this never
+   touches layout and never reaches the main thread.
+   The <noscript> block at the end of this section is the safety net:
+   with JS off the containers never receive [data-in], so the page
+   would otherwise stay blank.
+───────────────────────────────────────────────────────────────── */
+
+[data-reveal] > * {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.55s var(--ease-out),
+    transform 0.55s var(--ease-out);
+}
+
+[data-reveal][data-in] > * {
+  opacity: 1;
+  transform: none;
+}
+
+[data-reveal][data-in] > *:nth-child(1)  {
+  transition-delay: calc(var(--stagger) * 0);
+}
+
+[data-reveal][data-in] > *:nth-child(2)  {
+  transition-delay: calc(var(--stagger) * 1);
+}
+
+[data-reveal][data-in] > *:nth-child(3)  {
+  transition-delay: calc(var(--stagger) * 2);
+}
+
+[data-reveal][data-in] > *:nth-child(4)  {
+  transition-delay: calc(var(--stagger) * 3);
+}
+
+[data-reveal][data-in] > *:nth-child(5)  {
+  transition-delay: calc(var(--stagger) * 4);
+}
+
+[data-reveal][data-in] > *:nth-child(6)  {
+  transition-delay: calc(var(--stagger) * 5);
+}
+
+[data-reveal][data-in] > *:nth-child(7)  {
+  transition-delay: calc(var(--stagger) * 6);
+}
+
+[data-reveal][data-in] > *:nth-child(8)  {
+  transition-delay: calc(var(--stagger) * 7);
+}
+
+[data-reveal][data-in] > *:nth-child(9)  {
+  transition-delay: calc(var(--stagger) * 8);
+}
+
+[data-reveal][data-in] > *:nth-child(n+10) {
+  transition-delay: calc(var(--stagger) * 9);
+}
+
+/* ── Picture-or-motif frame ───────────────────────────────────────
+   Both branches produce the same box, so a slot can gain a photograph
+   later without moving any layout.
+───────────────────────────────────────────────────────────────── */
+
+.kk-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--kk-secondary) 16%, transparent), transparent 60%),
+    color-mix(in srgb, var(--kk-accent) 6%, transparent);
+}
+
+.kk-frame-img {
+  width: 100%;
+  height: 100%;
+  -o-object-fit: cover;
+     object-fit: cover;
+  display: block;
+  transition: transform 0.6s var(--ease-out);
+}
+
+.kk-frame-motif {
+  position: absolute;
+  inset: 14%;
+  display: block;
+  color: var(--kk-accent);
+  opacity: 0.85;
+}
+
+.kk-frame-credit {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.3rem;
+  font-family: var(--font-sans-stack);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--kk-paper);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  opacity: 0.75;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+
+.kk-st-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 82svh;
+  padding: calc(84px + env(safe-area-inset-top, 0px)) var(--pad) 2.5rem;
+  overflow: hidden;
+}
+
+.kk-st-hero-inner {
+  max-width: var(--max);
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* Each line is one rung of the ladder; --i comes from the component so
+   the timing is tuned here rather than scattered through the markup. */
+
+.kk-st-hero-inner > * {
+  animation: kk-rise var(--settle) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger) + 0.08s);
+}
+
+.kk-st-hero-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.kk-st-hero-bg img {
+  width: 100%;
+  height: 100%;
+  -o-object-fit: cover;
+     object-fit: cover;
+  animation: kk-hero-settle 1.4s var(--ease-out) both;
+}
+
+/* The title has to stay readable over whatever photograph arrives. */
+
+.kk-st-hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    var(--kk-paper) 0%,
+    color-mix(in srgb, var(--kk-paper) 86%, transparent) 42%,
+    color-mix(in srgb, var(--kk-paper) 35%, transparent) 100%);
+}
+
+.kk-st-hero-mark {
+  position: absolute;
+  top: 50%;
+  right: 1.5rem;
+  transform: translateY(-50%);
+  width: clamp(160px, 30vw, 380px);
+  height: auto;
+  color: var(--kk-accent);
+  opacity: 0;
+  pointer-events: none;
+  animation: kk-hero-mark 1.6s var(--ease-out) 0.15s both;
+}
+
+.kk-st-hero-back {
+  margin-bottom: 1.2rem;
+}
+
+.kk-st-hero-back a {
+  color: var(--kk-ink-soft);
+  text-decoration: none;
+}
+
+.kk-st-hero-back a:hover {
+  color: var(--kk-accent);
+}
+
+.kk-st-hero-eyebrow {
+  color: var(--kk-accent);
+  margin-bottom: 0.7rem;
+}
+
+.kk-st-hero-title {
+  font-family: var(--kk-font-display);
+  font-size: clamp(3.2rem, 15vw, 7rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+}
+
+.kk-st-hero-native {
+  font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+  color: var(--kk-accent);
+  margin-top: 0.4rem;
+}
+
+.kk-st-hero-tagline {
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: clamp(1.05rem, 3.6vw, 1.45rem);
+  color: var(--kk-ink);
+  margin-top: 1rem;
+}
+
+.kk-st-hero-intro {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--kk-ink-soft);
+  margin-top: 0.9rem;
+  max-width: 38rem;
+}
+
+.kk-st-hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.6rem;
+}
+
+.kk-st-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 46px;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid color-mix(in srgb, var(--kk-accent) 45%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-sans-stack);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--kk-accent);
+  transition:
+    background 0.25s var(--ease),
+    color 0.25s var(--ease),
+    transform 0.25s var(--ease-out),
+    box-shadow 0.25s var(--ease);
+}
+
+.kk-st-cta--lead {
+  background: var(--kk-accent);
+  color: var(--kk-paper);
+}
+
+@media (hover: hover) {
+  .kk-st-cta:hover {
+    background: color-mix(in srgb, var(--kk-accent) 12%, transparent);
+    transform: translateY(-2px);
+  }
+
+  .kk-st-cta--lead:hover {
+    background: color-mix(in srgb, var(--kk-accent) 85%, black);
+    color: var(--kk-paper);
+    box-shadow: 0 8px 22px -10px var(--kk-accent);
+  }
+}
+
+.kk-st-shloka {
+  margin-top: 2rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid color-mix(in srgb, var(--kk-accent) 35%, transparent);
+  font-size: 1.05rem;
+  color: var(--kk-accent);
+}
+
+.kk-st-shloka-roman {
+  display: block;
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: 0.78rem;
+  color: var(--kk-ink-soft);
+}
+
+.kk-st-patti {
+  display: block;
+  margin-top: 2rem;
+  opacity: 0;
+  animation: kk-fade 0.9s var(--ease-out) 0.75s both;
+}
+
+.kk-st-patti path {
+  stroke: var(--kk-accent);
+}
+
+/* ── Highlight strip ──────────────────────────────────────────── */
+
+.kk-st-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--kk-line);
+  border-block: 1px solid var(--kk-line);
+}
+
+.kk-st-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.1rem var(--pad);
+  background: var(--kk-paper);
+}
+
+.kk-st-stat-n {
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  line-height: 1;
+  color: var(--kk-accent);
+}
+
+/* One cell holds an art form's name rather than a numeral, so it needs to be
+   allowed to wrap and to sit at a readable size. */
+
+.kk-st-stats[data-count='2'] .kk-st-stat:last-child .kk-st-stat-n {
+  font-size: clamp(1.2rem, 4vw, 1.7rem);
+  line-height: 1.15;
+}
+
+.kk-st-stat-label {
+  color: var(--kk-ink-soft);
+}
+
+/* ── Sticky section nav ───────────────────────────────────────── */
+
+.kk-st-nav {
+  position: sticky;
+  top: calc(62px + env(safe-area-inset-top, 0px));
+  z-index: 60;
+  background: color-mix(in srgb, var(--kk-paper) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--kk-line);
+}
+
+.kk-st-nav-list {
+  list-style: none;
+  display: flex;
+  gap: 0.4rem;
+  max-width: var(--max);
+  margin-inline: auto;
+  padding: 0 var(--pad);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.kk-st-nav-list::-webkit-scrollbar {
+  display: none;
+}
+
+.kk-st-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  white-space: nowrap;
+  color: var(--kk-ink-soft);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+@media (hover: hover) {
+  .kk-st-nav-link:hover {
+    color: var(--kk-accent);
+    border-bottom-color: var(--kk-accent);
+  }
+}
+
+/* ── Sections ─────────────────────────────────────────────────── */
+
+.kk-st-section {
+  padding: 2.75rem var(--pad);
+  scroll-margin-top: 7.5rem;
+}
+
+.kk-st-section > * {
+  max-width: var(--max);
+  margin-inline: auto;
+}
+
+.kk-st-section--wash {
+  background: color-mix(in srgb, var(--kk-accent) 4%, transparent);
+}
+
+.kk-st-section--quiet {
+  background: var(--kk-paper-deep);
+}
+
+/* Headings stay flush with the content they introduce; the auto margin from
+   the container rule would otherwise centre them against the grids. */
+
+.kk-st-head {
+  max-width: 44rem;
+  margin-inline: 0;
+  margin-bottom: 1.5rem;
+}
+
+.kk-st-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--kk-accent);
+  margin-bottom: 0.5rem;
+}
+
+.kk-st-title {
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.9rem, 6.5vw, 3rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.kk-st-lede {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.86rem;
+  line-height: 1.8;
+  color: var(--kk-ink-soft);
+  margin-top: 0.6rem;
+}
+
+/* ── District map ─────────────────────────────────────────────── */
+
+.kk-st-map {
+  position: relative;
+}
+
+.kk-st-map-canvas {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--kk-accent) 5%, transparent), transparent 70%),
+    color-mix(in srgb, var(--kk-paper) 60%, transparent);
+}
+
+.kk-st-map-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.kk-st-map-skeleton {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--kk-ink) 3%, transparent);
+}
+
+.kk-st-map-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--kk-ink-soft);
+}
+
+/* Follows the pointer; written to by the map directly, never through React. */
+
+.kk-st-map-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  padding: 0.35rem 0.6rem;
+  margin: -2.6rem 0 0 0.8rem;
+  white-space: nowrap;
+  color: var(--kk-paper);
+  background: var(--kk-ink);
+  border-radius: 3px;
+  transition: opacity 0.18s var(--ease);
+}
+
+.kk-st-map-tip[data-on] {
+  opacity: 0.94;
+}
+
+/* On a phone the panel sits under the map: a 350px-wide map cannot afford
+   to have half of itself covered. From 641px it overlays the canvas. */
+
+.kk-st-map-panel {
+  padding: 1.1rem 0 0;
+  transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+}
+
+.kk-st-map-kicker {
+  color: var(--kk-accent);
+  margin-bottom: 0.3rem;
+}
+
+.kk-st-map-name {
+  font-family: var(--kk-font-display);
+  font-size: 1.6rem;
+  line-height: 1.1;
+  margin-bottom: 0.4rem;
+}
+
+.kk-st-map-note {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--kk-ink-soft);
+  max-width: 30rem;
+}
+
+.kk-st-map-crafts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.kk-st-map-clear {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 0.6rem;
+  color: var(--kk-ink-soft);
+}
+
+.kk-st-map-clear:hover {
+  color: var(--kk-accent);
+}
+
+.kk-st-map-clear:focus-visible {
+  outline: 2px solid var(--kk-accent);
+  outline-offset: 3px;
+}
+
+/* ── Culture beats ────────────────────────────────────────────── */
+
+.kk-st-beats {
+  list-style: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 78%;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  /* The rail must be able to bleed to the screen edge without the section
+     padding clipping the last card's shadow. */
+  margin-inline: calc(var(--pad) * -1);
+  padding-inline: var(--pad);
+}
+
+.kk-st-beats::-webkit-scrollbar {
+  display: none;
+}
+
+.kk-st-beat {
+  scroll-snap-align: start;
+  padding: 1.2rem;
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  background: var(--kk-paper);
+}
+
+.kk-st-beat-n {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--kk-accent);
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--kk-line);
+}
+
+.kk-st-beat-title {
+  font-family: var(--kk-font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.15;
+  margin-bottom: 0.4rem;
+}
+
+.kk-st-beat-body {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.84rem;
+  line-height: 1.8;
+  color: var(--kk-ink-soft);
+}
+
+/* ── Crafts of a state without a catalogue yet ────────────────── */
+
+.kk-st-briefs {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.8rem;
+}
+
+.kk-st-brief {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.1rem 1rem;
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  background: var(--kk-paper);
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .kk-st-brief:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--kk-accent) 40%, transparent);
+  }
+}
+
+.kk-st-brief-mark {
+  color: var(--kk-accent);
+  opacity: 0.8;
+}
+
+.kk-st-brief-name {
+  font-family: var(--kk-font-display);
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.kk-st-brief-tag {
+  align-self: flex-start;
+  color: var(--kk-accent);
+  border: 1px solid color-mix(in srgb, var(--kk-accent) 40%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+/* ── Crafts, as an accordion of cards ─────────────────────────── */
+
+.kk-st-crafts {
+  display: grid;
+  gap: 1rem;
+}
+
+.kk-st-craft {
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  background: var(--kk-paper);
+  overflow: hidden;
+  transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.kk-st-craft[open] {
+  grid-column: 1 / -1;
+  border-color: color-mix(in srgb, var(--kk-accent) 45%, transparent);
+}
+
+@media (hover: hover) {
+  .kk-st-craft:not([open]):hover {
+    border-color: color-mix(in srgb, var(--kk-accent) 40%, transparent);
+    box-shadow: 0 10px 28px -22px var(--kk-ink);
+  }
+
+  .kk-st-craft:not([open]):hover .kk-frame-img {
+    transform: scale(1.04);
+  }
+}
+
+.kk-st-craft-head {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.kk-st-craft-head::-webkit-details-marker {
+  display: none;
+}
+
+.kk-st-craft-head:focus-visible {
+  outline: 2px solid var(--kk-accent);
+  outline-offset: -3px;
+}
+
+.kk-st-craft-art {
+  width: 100%;
+}
+
+.kk-st-craft-where {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--kk-ink-soft);
+  margin-bottom: 0.35rem;
+}
+
+.kk-st-gi {
+  font-family: var(--font-sans-stack);
+  font-size: 0.52rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kk-accent);
+  border: 1px solid color-mix(in srgb, var(--kk-accent) 40%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  white-space: nowrap;
+}
+
+.kk-st-craft-name {
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.35rem, 4.5vw, 1.75rem);
+  font-weight: 400;
+  line-height: 1.1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.kk-st-craft-native {
+  font-size: 0.85rem;
+  color: var(--kk-accent);
+}
+
+.kk-st-craft-hook {
+  font-family: var(--font-classic-stack);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--kk-ink);
+  margin: 0.5rem 0 0.7rem;
+}
+
+.kk-st-craft-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--kk-accent);
+}
+
+.kk-st-craft-chev {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 0.3s var(--ease-out);
+}
+
+.kk-st-craft[open] .kk-st-craft-chev {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.kk-st-craft-open {
+  padding: 0 0.9rem 1.1rem;
+  animation: kk-expand 0.4s var(--ease-out) both;
+}
+
+.kk-st-craft-text {
+  border-top: 1px solid var(--kk-line);
+  padding-top: 1rem;
+}
+
+.kk-st-craft-story,
+.kk-st-craft-meta dd {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.86rem;
+  line-height: 1.8;
+  color: var(--kk-ink-soft);
+}
+
+.kk-st-craft-meta {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.kk-st-craft-meta dt {
+  color: var(--kk-accent);
+  margin-bottom: 0.2rem;
+}
+
+.kk-st-chip {
+  font-family: var(--font-classic-stack);
+  font-size: 0.88rem;
+  color: var(--kk-accent);
+  text-decoration: none;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--kk-accent) 32%, transparent);
+  border-radius: 999px;
+  transition: background 0.2s var(--ease);
+}
+
+.kk-st-chip:hover {
+  background: color-mix(in srgb, var(--kk-accent) 10%, transparent);
+}
+
+/* ── Products, inside an open craft ───────────────────────────── */
+
+.kk-st-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.8rem;
+  margin-top: 1.3rem;
+}
+
+.kk-st-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  background: var(--kk-paper);
+  overflow: hidden;
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .kk-st-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--kk-accent) 40%, transparent);
+  }
+
+  .kk-st-card:hover .kk-frame-img {
+    transform: scale(1.05);
+  }
+}
+
+.kk-st-card-art {
+  width: 100%;
+}
+
+.kk-st-card-tag {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  font-family: var(--font-sans-stack);
+  font-size: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kk-paper);
+  background: var(--kk-accent);
+  padding: 0.2rem 0.45rem;
+  border-radius: 2px;
+}
+
+.kk-st-card-body {
+  padding: 0.7rem 0.8rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.kk-st-card-name {
+  font-family: var(--kk-font-display);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.kk-st-card-blurb {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--kk-ink-soft);
+  margin-top: 0.3rem;
+  /* Two lines keeps twelve cards scannable; the full story is above. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kk-st-card-spec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-sans-stack);
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+  color: var(--kk-ink-soft);
+  margin-top: 0.5rem;
+}
+
+.kk-st-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 0.8rem;
+}
+
+.kk-st-price {
+  font-family: var(--kk-font-display);
+  font-size: 1.1rem;
+  color: var(--kk-ink);
+}
+
+.kk-st-buy {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: var(--kk-accent);
+  color: var(--kk-paper);
+  font-family: var(--font-sans-stack);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: filter 0.2s var(--ease), transform 0.2s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .kk-st-buy:hover {
+    filter: brightness(0.92);
+    transform: translateY(-1px);
+  }
+}
+
+.kk-st-buy:focus-visible {
+  outline: 2px solid var(--kk-ink);
+  outline-offset: 2px;
+}
+
+/* ── Experiences rail ─────────────────────────────────────────── */
+
+.kk-st-rail {
+  list-style: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 76%;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  margin-inline: calc(var(--pad) * -1);
+  padding-inline: var(--pad);
+}
+
+.kk-st-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.kk-st-exp {
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--kk-line);
+  border-radius: 3px;
+  background: var(--kk-paper);
+  overflow: hidden;
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .kk-st-exp:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--kk-accent) 40%, transparent);
+  }
+
+  .kk-st-exp:hover .kk-frame-img {
+    transform: scale(1.05);
+  }
+}
+
+.kk-st-exp-art {
+  width: 100%;
+}
+
+.kk-st-exp-body {
+  padding: 0.9rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.kk-st-exp-meta {
+  color: var(--kk-accent);
+  margin-bottom: 0.3rem;
+}
+
+.kk-st-exp-name {
+  font-family: var(--kk-font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.kk-st-exp-blurb {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.79rem;
+  line-height: 1.7;
+  color: var(--kk-ink-soft);
+  margin-top: 0.35rem;
+}
+
+.kk-st-exp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding-top: 0.9rem;
+}
+
+/* ── Tourism ──────────────────────────────────────────────────── */
+
+.kk-st-places {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem 1.2rem;
+}
+
+.kk-st-place {
+  padding-left: 0.8rem;
+  border-left: 2px solid color-mix(in srgb, var(--kk-accent) 30%, transparent);
+  transition: border-color 0.25s var(--ease);
+}
+
+@media (hover: hover) {
+  .kk-st-place:hover {
+    border-left-color: var(--kk-accent);
+  }
+}
+
+.kk-st-place-art {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.kk-st-place-kind {
+  color: var(--kk-accent);
+}
+
+.kk-st-place-name {
+  font-family: var(--kk-font-display);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-top: 0.15rem;
+}
+
+.kk-st-place-blurb {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--kk-ink-soft);
+  margin-top: 0.25rem;
+}
+
+.kk-st-place-where {
+  color: var(--kk-ink-soft);
+  opacity: 0.8;
+  margin-top: 0.3rem;
+}
+
+/* ── Closing call to action ───────────────────────────────────── */
+
+.kk-st-close {
+  position: relative;
+  overflow: hidden;
+  padding: 3.5rem var(--pad);
+  text-align: center;
+  background: color-mix(in srgb, var(--kk-accent) 7%, transparent);
+  border-top: 1px solid var(--kk-line);
+}
+
+.kk-st-close-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(200px, 45vw, 340px);
+  height: auto;
+  color: var(--kk-accent);
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+.kk-st-close > *:not(.kk-st-close-mark) {
+  position: relative;
+}
+
+.kk-st-close-shloka {
+  color: var(--kk-accent);
+  font-size: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.kk-st-close-title {
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.9rem, 7vw, 3rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.kk-st-close-body {
+  font-family: var(--font-sans-stack);
+  font-weight: 300;
+  font-size: 0.88rem;
+  line-height: 1.8;
+  color: var(--kk-ink-soft);
+  max-width: 34rem;
+  margin: 0.7rem auto 0;
+}
+
+.kk-st-close .kk-st-hero-cta {
+  justify-content: center;
+}
+
+/* ── Wider screens ────────────────────────────────────────────── */
+
+@media (min-width: 641px) {
+  .kk-st-section {
+    padding: 3.5rem var(--pad);
+  }
+
+  /* The strip takes however many facts the state actually has. */
+
+  .kk-st-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .kk-st-stats[data-count='2'] {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kk-st-stats[data-count='3'] {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .kk-st-stats[data-count='5'] {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .kk-st-briefs {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .kk-st-beats {
+    grid-auto-columns: 1fr;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, 1fr);
+    overflow: visible;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  /* The edge-bleed is a phone affordance. Past this width the rail must line
+     up with the heading above it, so the negative margin is undone. */
+
+  .kk-st-rail {
+    grid-auto-columns: 46%;
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+
+  .kk-st-crafts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kk-st-craft-meta {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.4rem;
+  }
+
+  .kk-st-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .kk-st-places {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* From here the map is big enough to carry the panel on top of it. */
+
+  .kk-st-map-canvas {
+    aspect-ratio: 3 / 2;
+  }
+
+  .kk-st-map-panel {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 2;
+    width: min(22rem, 46%);
+    padding: 1rem 1.1rem;
+    background: color-mix(in srgb, var(--kk-paper) 92%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--kk-line);
+    border-radius: 3px;
+    transform: translateY(6px);
+    opacity: 0.92;
+  }
+
+  .kk-st-map-panel[data-open] {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (min-width: 901px) {
+  .kk-st-hero {
+    min-height: 78vh;
+    padding-top: calc(104px + env(safe-area-inset-top, 0px));
+  }
+
+  .kk-st-section {
+    padding: 4.25rem var(--pad);
+  }
+
+  .kk-st-beats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .kk-st-rail {
+    grid-auto-columns: 30%;
+  }
+
+  .kk-st-crafts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .kk-st-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Matched to the shape of a typical state so the geometry fills the
+     frame; a wider box would only reintroduce the whitespace. */
+
+  .kk-st-map-canvas {
+    aspect-ratio: 7 / 5;
+    max-width: 980px;
+    margin-inline: auto;
+  }
+
+  /* Open craft: art beside the text rather than stacked above it. */
+
+  .kk-st-craft[open] .kk-st-craft-head {
+    grid-template-columns: 280px 1fr;
+    align-items: start;
+  }
+
+  .kk-st-craft[open] .kk-st-craft-open {
+    padding-inline: 1.2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .kk-st-places {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Without JS the containers never receive [data-in]; reveal everything. */
+
+/* ─────────────────────────────────────────────────────────────
+   KEYFRAMES
+───────────────────────────────────────────────────────────── */
+
+@keyframes kk-drift-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to   {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── State page ───────────────────────────────────────────────── */
+
+@keyframes kk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+
+  to   {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kk-fade {
+  from {
+    opacity: 0;
+  }
+
+  to   {
+    opacity: 0.5;
+  }
+}
+
+/* The open half of the accordion. Height is left alone deliberately —
+   animating it would cost a layout on every frame. */
+
+@keyframes kk-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to   {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kk-hero-settle {
+  from {
+    transform: scale(1.06);
+  }
+
+  to   {
+    transform: none;
+  }
+}
+
+@keyframes kk-hero-mark {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.94);
+  }
+
+  to   {
+    opacity: 0.08;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+@keyframes kk-breathe {
+  0%, 100% {
+    opacity: 0.10;
+    transform: scale(1);
+  }
+
+  50%      {
+    opacity: 0.20;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes drift-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+
+  to   {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.5;
+  }
+
+  50%      {
+    opacity: 1;
+  }
+}
+
+@keyframes holo-pulse {
+  0%, 100% {
+    opacity: 0.78;
+  }
+
+  40%      {
+    opacity: 1;
+  }
+
+  70%      {
+    opacity: 0.88;
+  }
+}
+
+.state-holo {
+  animation: holo-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes drop-line {
+  0%   {
+    transform: scaleY(0);
+    transform-origin: top;
+    opacity: 0;
+  }
+
+  50%  {
+    transform: scaleY(1);
+    transform-origin: top;
+    opacity: 1;
+  }
+
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+    opacity: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MOTION PREFERENCES
+───────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Scroll reveals start hidden and are revealed by a transition. With that
+     transition neutralised they still need an explicit visible state, or the
+     content would depend entirely on the observer having fired. */
+
+  [data-reveal] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* The rails are scroll-snapped; snapping is fine, animated snapping is not. */
+
+  .kk-st-beats,
+  .kk-st-rail {
+    scroll-snap-type: none;
+  }
+}
+
+*, ::before, ::after      {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+::backdrop      {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-gradient-from-position:  ;
+  --tw-gradient-via-position:  ;
+  --tw-gradient-to-position:  ;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+  --tw-contain-size:  ;
+  --tw-contain-layout:  ;
+  --tw-contain-paint:  ;
+  --tw-contain-style:  ;
+}
+
+/* ! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com */
+
+/*
+1. Prevent padding and border from affecting element width. (https://github.com/mozdevs/cssremedy/issues/4)
+2. Allow adding a border to an element by just adding a border-width. (https://github.com/tailwindcss/tailwindcss/pull/116)
+*/
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  /* 1 */
+  border-width: 0;
+  /* 2 */
+  border-style: solid;
+  /* 2 */
+  border-color: #e5e7eb;
+  /* 2 */
+}
+
+::before,
+::after {
+  --tw-content: '';
+}
+
+/*
+1. Use a consistent sensible line-height in all browsers.
+2. Prevent adjustments of font size after orientation changes in iOS.
+3. Use a more readable tab size.
+4. Use the user's configured `sans` font-family by default.
+5. Use the user's configured `sans` font-feature-settings by default.
+6. Use the user's configured `sans` font-variation-settings by default.
+7. Disable tap highlights on iOS
+*/
+
+html,
+:host {
+  line-height: 1.5;
+  /* 1 */
+  -webkit-text-size-adjust: 100%;
+  /* 2 */
+  -moz-tab-size: 4;
+  /* 3 */
+  -o-tab-size: 4;
+     tab-size: 4;
+  /* 3 */
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* 4 */
+  font-feature-settings: normal;
+  /* 5 */
+  font-variation-settings: normal;
+  /* 6 */
+  -webkit-tap-highlight-color: transparent;
+  /* 7 */
+}
+
+/*
+1. Remove the margin in all browsers.
+2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
+*/
+
+body {
+  margin: 0;
+  /* 1 */
+  line-height: inherit;
+  /* 2 */
+}
+
+/*
+1. Add the correct height in Firefox.
+2. Correct the inheritance of border color in Firefox. (https://bugzilla.mozilla.org/show_bug.cgi?id=190655)
+3. Ensure horizontal rules are visible by default.
+*/
+
+hr {
+  height: 0;
+  /* 1 */
+  color: inherit;
+  /* 2 */
+  border-top-width: 1px;
+  /* 3 */
+}
+
+/*
+Add the correct text decoration in Chrome, Edge, and Safari.
+*/
+
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+          text-decoration: underline dotted;
+}
+
+/*
+Remove the default font size and weight for headings.
+*/
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/*
+Reset links to optimize for opt-in styling instead of opt-out.
+*/
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/*
+Add the correct font weight in Edge and Safari.
+*/
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+/*
+1. Use the user's configured `mono` font-family by default.
+2. Use the user's configured `mono` font-feature-settings by default.
+3. Use the user's configured `mono` font-variation-settings by default.
+4. Correct the odd `em` font sizing in all browsers.
+*/
+
+code,
+kbd,
+samp,
+pre {
+  font-family: JetBrains Mono, monospace;
+  /* 1 */
+  font-feature-settings: normal;
+  /* 2 */
+  font-variation-settings: normal;
+  /* 3 */
+  font-size: 1em;
+  /* 4 */
+}
+
+/*
+Add the correct font size in all browsers.
+*/
+
+small {
+  font-size: 80%;
+}
+
+/*
+Prevent `sub` and `sup` elements from affecting the line height in all browsers.
+*/
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+/*
+1. Remove text indentation from table contents in Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=999088, https://bugs.webkit.org/show_bug.cgi?id=201297)
+2. Correct table border color inheritance in all Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=935729, https://bugs.webkit.org/show_bug.cgi?id=195016)
+3. Remove gaps between table borders by default.
+*/
+
+table {
+  text-indent: 0;
+  /* 1 */
+  border-color: inherit;
+  /* 2 */
+  border-collapse: collapse;
+  /* 3 */
+}
+
+/*
+1. Change the font styles in all browsers.
+2. Remove the margin in Firefox and Safari.
+3. Remove default padding in all browsers.
+*/
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  /* 1 */
+  font-feature-settings: inherit;
+  /* 1 */
+  font-variation-settings: inherit;
+  /* 1 */
+  font-size: 100%;
+  /* 1 */
+  font-weight: inherit;
+  /* 1 */
+  line-height: inherit;
+  /* 1 */
+  letter-spacing: inherit;
+  /* 1 */
+  color: inherit;
+  /* 1 */
+  margin: 0;
+  /* 2 */
+  padding: 0;
+  /* 3 */
+}
+
+/*
+Remove the inheritance of text transform in Edge and Firefox.
+*/
+
+button,
+select {
+  text-transform: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Remove default button styles.
+*/
+
+button,
+input:where([type='button']),
+input:where([type='reset']),
+input:where([type='submit']) {
+  -webkit-appearance: button;
+  /* 1 */
+  background-color: transparent;
+  /* 2 */
+  background-image: none;
+  /* 2 */
+}
+
+/*
+Use the modern Firefox focus style for all focusable elements.
+*/
+
+:-moz-focusring {
+  outline: auto;
+}
+
+/*
+Remove the additional `:invalid` styles in Firefox. (https://github.com/mozilla/gecko-dev/blob/2f9eacd9d3d995c937b4251a5557d95d494c9be1/layout/style/res/forms.css#L728-L737)
+*/
+
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+
+/*
+Add the correct vertical alignment in Chrome and Firefox.
+*/
+
+progress {
+  vertical-align: baseline;
+}
+
+/*
+Correct the cursor style of increment and decrement buttons in Safari.
+*/
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/*
+1. Correct the odd appearance in Chrome and Safari.
+2. Correct the outline style in Safari.
+*/
+
+[type='search'] {
+  -webkit-appearance: textfield;
+  /* 1 */
+  outline-offset: -2px;
+  /* 2 */
+}
+
+/*
+Remove the inner padding in Chrome and Safari on macOS.
+*/
+
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Change font properties to `inherit` in Safari.
+*/
+
+::-webkit-file-upload-button {
+  -webkit-appearance: button;
+  /* 1 */
+  font: inherit;
+  /* 2 */
+}
+
+/*
+Add the correct display in Chrome and Safari.
+*/
+
+summary {
+  display: list-item;
+}
+
+/*
+Removes the default spacing and border for appropriate elements.
+*/
+
+blockquote,
+dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+figure,
+p,
+pre {
+  margin: 0;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+ol,
+ul,
+menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+Reset default styling for dialogs.
+*/
+
+dialog {
+  padding: 0;
+}
+
+/*
+Prevent resizing textareas horizontally by default.
+*/
+
+textarea {
+  resize: vertical;
+}
+
+/*
+1. Reset the default placeholder opacity in Firefox. (https://github.com/tailwindlabs/tailwindcss/issues/3300)
+2. Set the default placeholder color to the user's configured gray 400 color.
+*/
+
+input::-moz-placeholder, textarea::-moz-placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+/*
+Set the default cursor for buttons.
+*/
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/*
+Make sure disabled buttons don't get the pointer cursor.
+*/
+
+:disabled {
+  cursor: default;
+}
+
+/*
+1. Make replaced elements `display: block` by default. (https://github.com/mozdevs/cssremedy/issues/14)
+2. Add `vertical-align: middle` to align replaced elements more sensibly by default. (https://github.com/jensimmons/cssremedy/issues/14#issuecomment-634934210)
+   This can trigger a poorly considered lint error in some tools but is included by design.
+*/
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  /* 1 */
+  vertical-align: middle;
+  /* 2 */
+}
+
+/*
+Constrain images and videos to the parent width and preserve their intrinsic aspect ratio. (https://github.com/mozdevs/cssremedy/issues/14)
+*/
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Make elements with the HTML hidden attribute stay hidden by default */
+
+[hidden]:where(:not([hidden="until-found"])) {
+  display: none;
+}
+
+.container      {
+  width: 100%;
+}
+
+@media (min-width: 640px)      {
+  .container      {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px)      {
+  .container      {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px)      {
+  .container      {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px)      {
+  .container      {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px)      {
+  .container      {
+    max-width: 1536px;
+  }
+}
+
+.visible      {
+  visibility: visible;
+}
+
+.fixed      {
+  position: fixed;
+}
+
+.absolute      {
+  position: absolute;
+}
+
+.relative      {
+  position: relative;
+}
+
+.sticky      {
+  position: sticky;
+}
+
+.inset-0      {
+  inset: 0px;
+}
+
+.left-1\/2      {
+  left: 50%;
+}
+
+.left-4      {
+  left: 1rem;
+}
+
+.right-3      {
+  right: 0.75rem;
+}
+
+.right-6      {
+  right: 1.5rem;
+}
+
+.top-1\/2      {
+  top: 50%;
+}
+
+.top-3      {
+  top: 0.75rem;
+}
+
+.top-6      {
+  top: 1.5rem;
+}
+
+.z-10      {
+  z-index: 10;
+}
+
+.z-50      {
+  z-index: 50;
+}
+
+.mx-auto      {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.-mt-1      {
+  margin-top: -0.25rem;
+}
+
+.mb-1      {
+  margin-bottom: 0.25rem;
+}
+
+.mb-10      {
+  margin-bottom: 2.5rem;
+}
+
+.mb-12      {
+  margin-bottom: 3rem;
+}
+
+.mb-2      {
+  margin-bottom: 0.5rem;
+}
+
+.mb-3      {
+  margin-bottom: 0.75rem;
+}
+
+.mb-4      {
+  margin-bottom: 1rem;
+}
+
+.mb-6      {
+  margin-bottom: 1.5rem;
+}
+
+.mb-8      {
+  margin-bottom: 2rem;
+}
+
+.mr-2      {
+  margin-right: 0.5rem;
+}
+
+.mt-0\.5      {
+  margin-top: 0.125rem;
+}
+
+.mt-1      {
+  margin-top: 0.25rem;
+}
+
+.mt-12      {
+  margin-top: 3rem;
+}
+
+.mt-4      {
+  margin-top: 1rem;
+}
+
+.mt-6      {
+  margin-top: 1.5rem;
+}
+
+.mt-8      {
+  margin-top: 2rem;
+}
+
+.mt-auto      {
+  margin-top: auto;
+}
+
+.line-clamp-1      {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2      {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3      {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.block      {
+  display: block;
+}
+
+.inline-block      {
+  display: inline-block;
+}
+
+.flex      {
+  display: flex;
+}
+
+.inline-flex      {
+  display: inline-flex;
+}
+
+.grid      {
+  display: grid;
+}
+
+.hidden      {
+  display: none;
+}
+
+.aspect-\[4\/3\]      {
+  aspect-ratio: 4/3;
+}
+
+.aspect-\[4\/5\]      {
+  aspect-ratio: 4/5;
+}
+
+.h-12      {
+  height: 3rem;
+}
+
+.h-14      {
+  height: 3.5rem;
+}
+
+.h-20      {
+  height: 5rem;
+}
+
+.h-24      {
+  height: 6rem;
+}
+
+.h-3      {
+  height: 0.75rem;
+}
+
+.h-32      {
+  height: 8rem;
+}
+
+.h-48      {
+  height: 12rem;
+}
+
+.h-64      {
+  height: 16rem;
+}
+
+.h-\[400px\]      {
+  height: 400px;
+}
+
+.h-\[600px\]      {
+  height: 600px;
+}
+
+.h-\[700px\]      {
+  height: 700px;
+}
+
+.h-fit      {
+  height: -moz-fit-content;
+  height: fit-content;
+}
+
+.h-full      {
+  height: 100%;
+}
+
+.max-h-\[55vh\]      {
+  max-height: 55vh;
+}
+
+.min-h-\[80vh\]      {
+  min-height: 80vh;
+}
+
+.min-h-screen      {
+  min-height: 100vh;
+}
+
+.w-12      {
+  width: 3rem;
+}
+
+.w-20      {
+  width: 5rem;
+}
+
+.w-24      {
+  width: 6rem;
+}
+
+.w-3      {
+  width: 0.75rem;
+}
+
+.w-full      {
+  width: 100%;
+}
+
+.min-w-\[200px\]      {
+  min-width: 200px;
+}
+
+.min-w-\[280px\]      {
+  min-width: 280px;
+}
+
+.max-w-2xl      {
+  max-width: 42rem;
+}
+
+.max-w-3xl      {
+  max-width: 48rem;
+}
+
+.max-w-4xl      {
+  max-width: 56rem;
+}
+
+.max-w-5xl      {
+  max-width: 64rem;
+}
+
+.max-w-6xl      {
+  max-width: 72rem;
+}
+
+.max-w-7xl      {
+  max-width: 80rem;
+}
+
+.max-w-\[800px\]      {
+  max-width: 800px;
+}
+
+.max-w-lg      {
+  max-width: 32rem;
+}
+
+.max-w-md      {
+  max-width: 28rem;
+}
+
+.max-w-none      {
+  max-width: none;
+}
+
+.flex-1      {
+  flex: 1 1 0%;
+}
+
+.flex-shrink-0      {
+  flex-shrink: 0;
+}
+
+.shrink-0      {
+  flex-shrink: 0;
+}
+
+.flex-grow      {
+  flex-grow: 1;
+}
+
+.-translate-x-1\/2      {
+  --tw-translate-x: -50%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.-translate-y-1\/2      {
+  --tw-translate-y: -50%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.transform      {
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.cursor-pointer      {
+  cursor: pointer;
+}
+
+.select-none      {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+
+.resize      {
+  resize: both;
+}
+
+.snap-x      {
+  scroll-snap-type: x var(--tw-scroll-snap-strictness);
+}
+
+.snap-start      {
+  scroll-snap-align: start;
+}
+
+.snap-center      {
+  scroll-snap-align: center;
+}
+
+.scroll-mt-32      {
+  scroll-margin-top: 8rem;
+}
+
+.grid-cols-1      {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.flex-col      {
+  flex-direction: column;
+}
+
+.flex-wrap      {
+  flex-wrap: wrap;
+}
+
+.items-start      {
+  align-items: flex-start;
+}
+
+.items-center      {
+  align-items: center;
+}
+
+.items-baseline      {
+  align-items: baseline;
+}
+
+.justify-center      {
+  justify-content: center;
+}
+
+.justify-between      {
+  justify-content: space-between;
+}
+
+.gap-0\.5      {
+  gap: 0.125rem;
+}
+
+.gap-1      {
+  gap: 0.25rem;
+}
+
+.gap-12      {
+  gap: 3rem;
+}
+
+.gap-2      {
+  gap: 0.5rem;
+}
+
+.gap-4      {
+  gap: 1rem;
+}
+
+.gap-6      {
+  gap: 1.5rem;
+}
+
+.gap-8      {
+  gap: 2rem;
+}
+
+.space-x-4 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(1rem * var(--tw-space-x-reverse));
+  margin-left: calc(1rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.space-x-6 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(1.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(1.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.space-x-8 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(2rem * var(--tw-space-x-reverse));
+  margin-left: calc(2rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.space-y-16 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(4rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(4rem * var(--tw-space-y-reverse));
+}
+
+.space-y-2 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
+}
+
+.space-y-20 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(5rem * var(--tw-space-y-reverse));
+}
+
+.space-y-24 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(6rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(6rem * var(--tw-space-y-reverse));
+}
+
+.space-y-4 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+}
+
+.space-y-6 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
+}
+
+.space-y-8 > :not([hidden]) ~ :not([hidden])      {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(2rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(2rem * var(--tw-space-y-reverse));
+}
+
+.overflow-hidden      {
+  overflow: hidden;
+}
+
+.overflow-x-auto      {
+  overflow-x: auto;
+}
+
+.overflow-y-auto      {
+  overflow-y: auto;
+}
+
+.rounded      {
+  border-radius: 0.25rem;
+}
+
+.rounded-2xl      {
+  border-radius: 1rem;
+}
+
+.rounded-full      {
+  border-radius: 9999px;
+}
+
+.rounded-lg      {
+  border-radius: 0.5rem;
+}
+
+.rounded-md      {
+  border-radius: 0.375rem;
+}
+
+.rounded-xl      {
+  border-radius: 0.75rem;
+}
+
+.border      {
+  border-width: 1px;
+}
+
+.border-2      {
+  border-width: 2px;
+}
+
+.border-b      {
+  border-bottom-width: 1px;
+}
+
+.border-l-2      {
+  border-left-width: 2px;
+}
+
+.border-r      {
+  border-right-width: 1px;
+}
+
+.border-t      {
+  border-top-width: 1px;
+}
+
+.border-\[\#B24C3B\]      {
+  --tw-border-opacity: 1;
+  border-color: rgb(178 76 59 / var(--tw-border-opacity, 1));
+}
+
+.border-\[\#B24C3B\]\/20      {
+  border-color: rgb(178 76 59 / 0.2);
+}
+
+.border-\[\#E8E2D2\]      {
+  --tw-border-opacity: 1;
+  border-color: rgb(232 226 210 / var(--tw-border-opacity, 1));
+}
+
+.border-\[\#E8E2D2\]\/50      {
+  border-color: rgb(232 226 210 / 0.5);
+}
+
+.border-\[var\(--st-border\)\]      {
+  border-color: var(--st-border);
+}
+
+.border-gray-200      {
+  --tw-border-opacity: 1;
+  border-color: rgb(229 231 235 / var(--tw-border-opacity, 1));
+}
+
+.border-stone-100      {
+  --tw-border-opacity: 1;
+  border-color: rgb(245 245 244 / var(--tw-border-opacity, 1));
+}
+
+.border-stone-200      {
+  --tw-border-opacity: 1;
+  border-color: rgb(231 229 228 / var(--tw-border-opacity, 1));
+}
+
+.border-transparent      {
+  border-color: transparent;
+}
+
+.bg-\[\#7A1A1E\]      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(122 26 30 / var(--tw-bg-opacity, 1));
+}
+
+.bg-\[\#B24C3B\]      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(178 76 59 / var(--tw-bg-opacity, 1));
+}
+
+.bg-\[\#F8F4EC\]      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(248 244 236 / var(--tw-bg-opacity, 1));
+}
+
+.bg-\[\#F8F4EC\]\/95      {
+  background-color: rgb(248 244 236 / 0.95);
+}
+
+.bg-\[\#FAF6EA\]      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(250 246 234 / var(--tw-bg-opacity, 1));
+}
+
+.bg-\[\#FFFBF2\]      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 251 242 / var(--tw-bg-opacity, 1));
+}
+
+.bg-gray-100      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
+}
+
+.bg-gray-200      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
+}
+
+.bg-stone-100      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(245 245 244 / var(--tw-bg-opacity, 1));
+}
+
+.bg-white      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
+}
+
+.bg-white\/50      {
+  background-color: rgb(255 255 255 / 0.5);
+}
+
+.object-contain      {
+  -o-object-fit: contain;
+     object-fit: contain;
+}
+
+.object-cover      {
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
+.p-4      {
+  padding: 1rem;
+}
+
+.p-6      {
+  padding: 1.5rem;
+}
+
+.p-8      {
+  padding: 2rem;
+}
+
+.px-2      {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.px-3      {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.px-4      {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.px-6      {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.px-8      {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.py-0\.5      {
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.py-1      {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.py-1\.5      {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.py-12      {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.py-16      {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+.py-2      {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.py-2\.5      {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.py-20      {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.py-3      {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.py-4      {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.py-8      {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.pb-12      {
+  padding-bottom: 3rem;
+}
+
+.pb-24      {
+  padding-bottom: 6rem;
+}
+
+.pb-4      {
+  padding-bottom: 1rem;
+}
+
+.pb-6      {
+  padding-bottom: 1.5rem;
+}
+
+.pb-8      {
+  padding-bottom: 2rem;
+}
+
+.pl-12      {
+  padding-left: 3rem;
+}
+
+.pr-2      {
+  padding-right: 0.5rem;
+}
+
+.pr-4      {
+  padding-right: 1rem;
+}
+
+.pt-0      {
+  padding-top: 0px;
+}
+
+.pt-12      {
+  padding-top: 3rem;
+}
+
+.pt-4      {
+  padding-top: 1rem;
+}
+
+.pt-6      {
+  padding-top: 1.5rem;
+}
+
+.text-left      {
+  text-align: left;
+}
+
+.text-center      {
+  text-align: center;
+}
+
+.text-right      {
+  text-align: right;
+}
+
+.font-sans      {
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+.font-serif      {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+.text-2xl      {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.text-3xl      {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
+.text-4xl      {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+}
+
+.text-5xl      {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.text-\[10px\]      {
+  font-size: 10px;
+}
+
+.text-\[11px\]      {
+  font-size: 11px;
+}
+
+.text-base      {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.text-lg      {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-sm      {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-xl      {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.text-xs      {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.font-bold      {
+  font-weight: 700;
+}
+
+.font-medium      {
+  font-weight: 500;
+}
+
+.font-semibold      {
+  font-weight: 600;
+}
+
+.uppercase      {
+  text-transform: uppercase;
+}
+
+.italic      {
+  font-style: italic;
+}
+
+.leading-none      {
+  line-height: 1;
+}
+
+.leading-relaxed      {
+  line-height: 1.625;
+}
+
+.leading-tight      {
+  line-height: 1.25;
+}
+
+.tracking-\[0\.2em\]      {
+  letter-spacing: 0.2em;
+}
+
+.tracking-wide      {
+  letter-spacing: 0.025em;
+}
+
+.tracking-wider      {
+  letter-spacing: 0.05em;
+}
+
+.tracking-widest      {
+  letter-spacing: 0.1em;
+}
+
+.text-\[\#2B231D\]      {
+  --tw-text-opacity: 1;
+  color: rgb(43 35 29 / var(--tw-text-opacity, 1));
+}
+
+.text-\[\#3A0F14\]      {
+  --tw-text-opacity: 1;
+  color: rgb(58 15 20 / var(--tw-text-opacity, 1));
+}
+
+.text-\[\#4A3B32\]      {
+  --tw-text-opacity: 1;
+  color: rgb(74 59 50 / var(--tw-text-opacity, 1));
+}
+
+.text-\[\#8C6D53\]      {
+  --tw-text-opacity: 1;
+  color: rgb(140 109 83 / var(--tw-text-opacity, 1));
+}
+
+.text-\[\#8C6D53\]\/50      {
+  color: rgb(140 109 83 / 0.5);
+}
+
+.text-\[\#B24C3B\]      {
+  --tw-text-opacity: 1;
+  color: rgb(178 76 59 / var(--tw-text-opacity, 1));
+}
+
+.text-red-500      {
+  --tw-text-opacity: 1;
+  color: rgb(239 68 68 / var(--tw-text-opacity, 1));
+}
+
+.text-red-600      {
+  --tw-text-opacity: 1;
+  color: rgb(220 38 38 / var(--tw-text-opacity, 1));
+}
+
+.text-stone-500      {
+  --tw-text-opacity: 1;
+  color: rgb(120 113 108 / var(--tw-text-opacity, 1));
+}
+
+.text-stone-600      {
+  --tw-text-opacity: 1;
+  color: rgb(87 83 78 / var(--tw-text-opacity, 1));
+}
+
+.text-white      {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.no-underline      {
+  text-decoration-line: none;
+}
+
+.placeholder-\[\#8C6D53\]\/60::-moz-placeholder      {
+  color: rgb(140 109 83 / 0.6);
+}
+
+.placeholder-\[\#8C6D53\]\/60::placeholder      {
+  color: rgb(140 109 83 / 0.6);
+}
+
+.opacity-0      {
+  opacity: 0;
+}
+
+.opacity-30      {
+  opacity: 0.3;
+}
+
+.opacity-40      {
+  opacity: 0.4;
+}
+
+.opacity-50      {
+  opacity: 0.5;
+}
+
+.opacity-80      {
+  opacity: 0.8;
+}
+
+.shadow-\[0_8px_30px_rgb\(0\2c 0\2c 0\2c 0\.04\)\]      {
+  --tw-shadow: 0 8px 30px rgb(0,0,0,0.04);
+  --tw-shadow-colored: 0 8px 30px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.shadow-sm      {
+  --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.outline      {
+  outline-style: solid;
+}
+
+.ring      {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.blur      {
+  --tw-blur: blur(8px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.filter      {
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.backdrop-blur-sm      {
+  --tw-backdrop-blur: blur(4px);
+  backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
+}
+
+.transition      {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-all      {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-colors      {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-opacity      {
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-transform      {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.duration-300      {
+  transition-duration: 300ms;
+}
+
+.duration-500      {
+  transition-duration: 500ms;
+}
+
+.duration-700      {
+  transition-duration: 700ms;
+}
+
+.ease-in-out      {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ease-out      {
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.hover\:scale-110:hover      {
+  --tw-scale-x: 1.1;
+  --tw-scale-y: 1.1;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.hover\:border-\[\#8C6D53\]:hover      {
+  --tw-border-opacity: 1;
+  border-color: rgb(140 109 83 / var(--tw-border-opacity, 1));
+}
+
+.hover\:border-\[\#B24C3B\]:hover      {
+  --tw-border-opacity: 1;
+  border-color: rgb(178 76 59 / var(--tw-border-opacity, 1));
+}
+
+.hover\:bg-\[\#8A3A2C\]:hover      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(138 58 44 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-\[\#B24C3B\]:hover      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(178 76 59 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-\[\#F8F4EC\]:hover      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(248 244 236 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-\[\#FDF6E3\]:hover      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(253 246 227 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-gray-50:hover      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:bg-red-50:hover      {
+  --tw-bg-opacity: 1;
+  background-color: rgb(254 242 242 / var(--tw-bg-opacity, 1));
+}
+
+.hover\:text-\[\#4A3B32\]:hover      {
+  --tw-text-opacity: 1;
+  color: rgb(74 59 50 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-\[\#7A1A1E\]:hover      {
+  --tw-text-opacity: 1;
+  color: rgb(122 26 30 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-\[\#B24C3B\]:hover      {
+  --tw-text-opacity: 1;
+  color: rgb(178 76 59 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-white:hover      {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.hover\:underline:hover      {
+  text-decoration-line: underline;
+}
+
+.focus\:border-\[\#B24C3B\]:focus      {
+  --tw-border-opacity: 1;
+  border-color: rgb(178 76 59 / var(--tw-border-opacity, 1));
+}
+
+.focus\:outline-none:focus      {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus\:ring-1:focus      {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus\:ring-\[\#B24C3B\]:focus      {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(178 76 59 / var(--tw-ring-opacity, 1));
+}
+
+.group[open] .group-open\:rotate-180      {
+  --tw-rotate: 180deg;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.group:hover .group-hover\:text-\[\#B24C3B\]      {
+  --tw-text-opacity: 1;
+  color: rgb(178 76 59 / var(--tw-text-opacity, 1));
+}
+
+.group:hover .group-hover\:opacity-0      {
+  opacity: 0;
+}
+
+.group:hover .group-hover\:opacity-100      {
+  opacity: 1;
+}
+
+@media (min-width: 640px)      {
+  .sm\:h-32      {
+    height: 8rem;
+  }
+
+  .sm\:h-56      {
+    height: 14rem;
+  }
+
+  .sm\:h-\[500px\]      {
+    height: 500px;
+  }
+
+  .sm\:w-32      {
+    width: 8rem;
+  }
+
+  .sm\:w-auto      {
+    width: auto;
+  }
+
+  .sm\:grid-cols-2      {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sm\:flex-row      {
+    flex-direction: row;
+  }
+
+  .sm\:items-start      {
+    align-items: flex-start;
+  }
+
+  .sm\:justify-start      {
+    justify-content: flex-start;
+  }
+
+  .sm\:px-6      {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .sm\:text-left      {
+    text-align: left;
+  }
+}
+
+@media (min-width: 768px)      {
+  .md\:col-span-1      {
+    grid-column: span 1 / span 1;
+  }
+
+  .md\:col-span-3      {
+    grid-column: span 3 / span 3;
+  }
+
+  .md\:flex      {
+    display: flex;
+  }
+
+  .md\:h-16      {
+    height: 4rem;
+  }
+
+  .md\:h-96      {
+    height: 24rem;
+  }
+
+  .md\:w-64      {
+    width: 16rem;
+  }
+
+  .md\:min-w-\[320px\]      {
+    min-width: 320px;
+  }
+
+  .md\:grid-cols-2      {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-4      {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .md\:flex-row      {
+    flex-direction: row;
+  }
+
+  .md\:space-y-32 > :not([hidden]) ~ :not([hidden])      {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(8rem * calc(1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(8rem * var(--tw-space-y-reverse));
+  }
+
+  .md\:p-10      {
+    padding: 2.5rem;
+  }
+
+  .md\:p-12      {
+    padding: 3rem;
+  }
+
+  .md\:px-8      {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .md\:py-24      {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+
+  .md\:pt-24      {
+    padding-top: 6rem;
+  }
+
+  .md\:text-2xl      {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .md\:text-4xl      {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+
+  .md\:text-5xl      {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .md\:text-6xl      {
+    font-size: 3.75rem;
+    line-height: 1;
+  }
+
+  .md\:text-lg      {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  .md\:text-xs      {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+}
+
+@media (min-width: 1024px)      {
+  .lg\:col-span-2      {
+    grid-column: span 2 / span 2;
+  }
+
+  .lg\:h-auto      {
+    height: auto;
+  }
+
+  .lg\:grid-cols-2      {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-3      {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-4      {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .lg\:flex-row      {
+    flex-direction: row;
+  }
+
+  .lg\:gap-24      {
+    gap: 6rem;
+  }
+
+  .lg\:px-8      {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .lg\:text-7xl      {
+    font-size: 4.5rem;
+    line-height: 1;
+  }
+}
+
+@media (min-width: 1280px)      {
+  .xl\:grid-cols-4      {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

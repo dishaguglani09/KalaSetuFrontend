@@ -1,0 +1,13 @@
+packages:
+  - .
+
+allowBuilds:
+  unrs-resolver: true
+
+# Force patched transitive versions. next pins postcss 8.4.31, and the eslint
+# chain pulls vulnerable minimatch/glob; all are semver-compatible bumps.
+overrides:
+  postcss: '>=8.5.23'
+  nanoid: '>=3.3.18'
+  minimatch: '>=9.0.7'
+  glob: '>=10.5.0'

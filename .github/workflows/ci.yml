@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege: this workflow only validates — it never writes to the
+# repository, and holds no deployment credentials. Production deploys are
+# owned by Vercel's Git integration, so no Vercel token exists in GitHub.
+permissions:
+  contents: read
+
+env:
+  # Must match the pnpm that writes pnpm-lock.yaml and pnpm-workspace.yaml
+  # locally. pnpm 9 rejects a workspace manifest that has no `packages` field,
+  # which breaks `pnpm store path` — the command setup-node runs to find the
+  # cache. pnpm 11 also ships bin/pnpm.mjs instead of bin/pnpm.cjs, so it
+  # needs pnpm/action-setup v6+ to install at all.
+  PNPM_VERSION: 11
+  # Node 20 reached end-of-life in April 2026; 24 is the current LTS and the
+  # runner default.
+  NODE_VERSION: 24
+
+jobs:
+  # ── Validation gate (runs on every push + PR) ──────────────────────────────
+  validate:
+    name: Type-check · Lint · Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint:strict
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Provide defaults so the build doesn't fail without real secrets.
+          # Production values live in Vercel environment settings, not here.
+          NEXT_PUBLIC_SITE_URL: https://kalakriti.in
+          NEXT_PUBLIC_APP_NAME: Kalakriti
