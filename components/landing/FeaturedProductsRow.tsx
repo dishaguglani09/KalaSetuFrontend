@@ -1,4 +1,3 @@
-'use client';
 
 import ProductCard, { type ProductCardData } from '@/components/shared/ProductCard';
 

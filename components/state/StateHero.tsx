@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Motif, BorderPatti } from '@/components/ornament/Motifs';
 import { themeFor } from '@/lib/stateThemes';
 import type { StatePage } from '@/lib/states/types';
@@ -43,7 +43,7 @@ export default function StateHero({ page }: { page: StatePage }) {
 
       <div className="kk-st-hero-inner">
         <p className="kk-st-hero-back kk-label" style={{ '--i': 0 } as React.CSSProperties}>
-          <Link href="/">← All of India</Link>
+          <Link to="/">← All of India</Link>
         </p>
 
         <p className="kk-st-hero-eyebrow kk-label" style={{ '--i': 1 } as React.CSSProperties}>
@@ -77,7 +77,7 @@ export default function StateHero({ page }: { page: StatePage }) {
               {/* No catalogue here yet, so the hero points at what does
                   exist rather than at an empty section. */}
               <a className="kk-st-cta kk-st-cta--lead" href="#crafts">See the traditions</a>
-              <Link className="kk-st-cta" href={`/#${encodeURIComponent(page.state)}`}>
+              <Link className="kk-st-cta" to={`/#${encodeURIComponent(page.state)}`}>
                 Find it on the map
               </Link>
             </>

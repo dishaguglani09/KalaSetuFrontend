@@ -1,4 +1,3 @@
-'use client';
 
 import { useWishlistStore, WishlistItem } from '@/lib/store/useWishlistStore';
 import { useToastStore } from '@/lib/store/useToastStore';

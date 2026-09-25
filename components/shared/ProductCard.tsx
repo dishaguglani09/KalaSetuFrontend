@@ -1,6 +1,5 @@
-'use client';
 
-import Image from 'next/image';
+
 
 export interface ProductCardData {
   id: string;
@@ -50,12 +49,10 @@ export default function ProductCard({ product, onQuickAdd }: ProductCardProps) {
     >
       {/* Image */}
       <div style={{ aspectRatio: '4/3', position: 'relative', overflow: 'hidden', background: 'var(--bg-ochre)' }}>
-        <Image
+        <img
           src={product.imageUrl}
           alt={product.imageAlt}
-          fill
-          style={{ objectFit: 'cover', transition: 'transform 0.4s ease' }}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
         />

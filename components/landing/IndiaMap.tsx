@@ -1,4 +1,3 @@
-'use client';
 
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import {
@@ -7,7 +6,7 @@ import {
 } from '@/lib/stateThemes';
 import { useRegionStore, tourLength } from '@/lib/store/useRegionStore';
 import { slugForState } from '@/lib/states/slugs';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Motif, Chakra, Trishul, BorderPatti } from '@/components/ornament/Motifs';
 
 const LABEL_ABBR: Record<string, string> = {

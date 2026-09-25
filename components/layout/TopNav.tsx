@@ -1,7 +1,6 @@
-'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { Link, useNavigate } from 'react-router-dom';
 import { REGIONS, STATE_THEMES, displayName, themeFor } from '@/lib/stateThemes';
 /* The slug map only — importing the registry would pull every state's
    catalogue into the bundle for a nav that renders on every page. */
@@ -10,7 +9,6 @@ import { STATE_PAGES } from '@/lib/states';
 import { useRegionStore } from '@/lib/store/useRegionStore';
 import { Motif } from '@/components/ornament/Motifs';
 import CraftImage from '@/components/shared/CraftImage';
-import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
 
@@ -23,7 +21,7 @@ export default function TopNav() {
   const cartCount = useCartStore(s => s.getCartCount());
   const wishlistCount = useWishlistStore(s => s.items.length);
   const menuRef  = useRef<HTMLDivElement>(null);
-  const router   = useRouter();
+  const navigate = useNavigate();
 
   const current = selected ? themeFor(selected) : null;
 
@@ -81,7 +79,7 @@ export default function TopNav() {
 
   return (
     <nav className="nav">
-      <Link href="/" className="nav-logo" aria-label="KalaSetu — home" onClick={() => choose(null)}>
+      <Link to="/" className="nav-logo" aria-label="KalaSetu — home" onClick={() => choose(null)}>
         <span>KalaSetu</span>
       </Link>
 
@@ -90,13 +88,13 @@ export default function TopNav() {
           onSubmit={(e) => {
             e.preventDefault();
             if (results?.states.length) {
-               router.push(`/state/${slugForState(results.states[0])}`);
+               navigate(`/state/${slugForState(results.states[0])}`);
                setSearchQuery('');
             } else if (results?.crafts.length) {
-               router.push(`/state/${results.crafts[0].pageSlug}#craft-${results.crafts[0].id}`);
+               navigate(`/state/${results.crafts[0].pageSlug}#craft-${results.crafts[0].id}`);
                setSearchQuery('');
             } else if (results?.products.length) {
-               router.push(`/state/${results.products[0].pageSlug}#${results.products[0].id}`);
+               navigate(`/state/${results.products[0].pageSlug}#${results.products[0].id}`);
                setSearchQuery('');
             }
           }}
@@ -119,7 +117,7 @@ export default function TopNav() {
                  {results.states.map(s => (
                    <button 
                      key={s} 
-                     onClick={() => { router.push(`/state/${slugForState(s)}`); setSearchQuery(''); }}
+                     onClick={() => { navigate(`/state/${slugForState(s)}`); setSearchQuery(''); }}
                      className="w-full text-left px-2 py-1.5 hover:bg-[var(--kk-ink-soft)] hover:bg-opacity-10 rounded flex items-center gap-2"
                    >
                      <Motif name={STATE_THEMES[s].motif} size={12} strokeWidth={2} />
@@ -135,7 +133,7 @@ export default function TopNav() {
                  {results.crafts.map(c => (
                    <button 
                      key={c.id} 
-                     onClick={() => { router.push(`/state/${c.pageSlug}#craft-${c.id}`); setSearchQuery(''); }}
+                     onClick={() => { navigate(`/state/${c.pageSlug}#craft-${c.id}`); setSearchQuery(''); }}
                      className="w-full text-left px-2 py-2 hover:bg-[var(--kk-ink-soft)] hover:bg-opacity-10 rounded flex items-center gap-3"
                    >
                      {c.image?.dynamicSearch ? (
@@ -160,7 +158,7 @@ export default function TopNav() {
                  {results.products.map(p => (
                    <button 
                      key={p.id} 
-                     onClick={() => { router.push(`/state/${p.pageSlug}#${p.id}`); setSearchQuery(''); }}
+                     onClick={() => { navigate(`/state/${p.pageSlug}#${p.id}`); setSearchQuery(''); }}
                      className="w-full text-left px-2 py-2 hover:bg-[var(--kk-ink-soft)] hover:bg-opacity-10 rounded flex items-center gap-3"
                    >
                      {p.image?.dynamicSearch ? (
@@ -236,7 +234,7 @@ export default function TopNav() {
                             <Link
                               role="menuitem"
                               className="nav-menu-item"
-                              href={`/state/${slug}`}
+                              to={`/state/${slug}`}
                               style={rowStyle}
                               onClick={() => setOpen(false)}
                             >
@@ -264,7 +262,7 @@ export default function TopNav() {
         )}
 
         <Link
-          href="/wishlist"
+          to="/wishlist"
           className="nav-menu-btn"
           style={{ textDecoration: 'none', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
@@ -286,7 +284,7 @@ export default function TopNav() {
         </Link>
 
         <Link
-          href="/cart"
+          to="/cart"
           className="nav-menu-btn"
           style={{ textDecoration: 'none', marginLeft: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
         >

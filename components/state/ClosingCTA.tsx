@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Motif } from '@/components/ornament/Motifs';
 import type { MotifKey } from '@/lib/stateThemes';
 
@@ -48,10 +48,10 @@ export default function ClosingCTA({
             with its story. Start with Bihar in the meantime.
           </p>
           <p className="kk-st-hero-cta">
-            <Link className="kk-st-cta kk-st-cta--lead" href="/state/bihar">
+            <Link className="kk-st-cta kk-st-cta--lead" to="/state/bihar">
               Explore Bihar
             </Link>
-            <Link className="kk-st-cta" href="/">All of India</Link>
+            <Link className="kk-st-cta" to="/">All of India</Link>
           </p>
         </>
       )}

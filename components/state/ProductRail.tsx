@@ -1,4 +1,3 @@
-'use client';
 
 import Frame from '@/components/state/Frame';
 import type { Craft, Product } from '@/lib/states/types';

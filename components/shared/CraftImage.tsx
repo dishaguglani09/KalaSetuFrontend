@@ -1,4 +1,3 @@
-'use client';
 
 import { useState } from 'react';
 import { Motif } from '@/components/ornament/Motifs';
