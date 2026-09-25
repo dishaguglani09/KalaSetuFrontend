@@ -1296,17 +1296,36 @@ function Dashboard() {
   const [recentProducts, setRecentProducts] = useState<any[]>([]);
 
   useEffect(() => {
+    const currentUserId = user?.id;
     api.products.getStats()
       .then(setStats)
-      .catch(async () => {
-        const local = await loadAllProductsLocally();
-        if (local.length > 0) {
-          const published = local.filter(p => p.status === "PUBLISHED").length;
+      .catch(async (err: any) => {
+        const msg = String(err?.message || "");
+        if (msg.includes("401") || msg.toLowerCase().includes("unauthorized") || msg.toLowerCase().includes("authentication required")) {
           setStats({
-            totalProducts: local.length,
+            totalProducts: 0,
+            publishedListings: 0,
+            monthlyViews: "0",
+            studioCompletion: "0%"
+          });
+          return;
+        }
+        const local = await loadAllProductsLocally();
+        const userLocal = currentUserId ? local.filter(p => p.seller_id === currentUserId) : [];
+        if (userLocal.length > 0) {
+          const published = userLocal.filter(p => p.status === "PUBLISHED").length;
+          setStats({
+            totalProducts: userLocal.length,
             publishedListings: published,
-            monthlyViews: "42.8k",
-            studioCompletion: `${Math.min(100, Math.round((published / Math.max(1, local.length)) * 100))}%`
+            monthlyViews: "0",
+            studioCompletion: `${Math.min(100, Math.round((published / Math.max(1, userLocal.length)) * 100))}%`
+          });
+        } else {
+          setStats({
+            totalProducts: 0,
+            publishedListings: 0,
+            monthlyViews: "0",
+            studioCompletion: "0%"
           });
         }
       });
@@ -1316,12 +1335,18 @@ function Dashboard() {
         setRecentProducts(res.products.slice(0, 3));
         await saveProductsLocally(res.products).catch(() => {});
       })
-      .catch(async () => {
+      .catch(async (err: any) => {
+        const msg = String(err?.message || "");
+        if (msg.includes("401") || msg.toLowerCase().includes("unauthorized") || msg.toLowerCase().includes("authentication required")) {
+          setRecentProducts([]);
+          return;
+        }
         const local = await loadAllProductsLocally();
-        local.sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
-        setRecentProducts(local.slice(0, 3));
+        const userLocal = currentUserId ? local.filter(p => p.seller_id === currentUserId) : [];
+        userLocal.sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+        setRecentProducts(userLocal.slice(0, 3));
       });
-  }, []);
+  }, [user?.id]);
 
   const handleStartNew = () => {
     resetDraft();
@@ -2566,7 +2591,10 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
       <FlowHeader current={`/add-product${step === "capture" ? "" : "/" + step}`} />
       <PageTitle eyebrow={currInfo.eyebrow} title={currInfo.title} description={currInfo.desc} />
 
-      <div className={`mx-auto soft-card transition-all ${step === "pricing" ? "max-w-4xl p-6 md:p-10" : "max-w-3xl p-6 md:p-10"}`}>
+      <div
+        className={`mx-auto soft-card transition-all relative overflow-hidden bg-cover bg-center bg-no-repeat ${step === "pricing" ? "max-w-4xl p-6 md:p-10" : "max-w-3xl p-6 md:p-10"}`}
+        style={["capture", "enhance", "voice", "catalogue", "story", "pricing"].includes(step) ? { backgroundImage: `url('/add-product-bg.jpg')` } : undefined}
+      >
         {/* Step 1: Capture Photo */}
         {step === "capture" && (
           <div className="text-center">
@@ -3599,6 +3627,7 @@ function GuidedProduct({ step }: { step: "capture" | "enhance" | "voice" | "cata
 
 function Products() {
   const navigate = useNavigate();
+  const { user } = useSession();
   const { loadDraft, resetDraft } = useProductDraft();
   const [products, setProducts] = useState<any[]>([]);
   const [filter, setFilter] = useState("ALL");
@@ -3607,18 +3636,35 @@ function Products() {
 
   const fetchProducts = (status: string) => {
     setLoading(true);
+    const currentUserId = user?.id;
     api.products.getAll(status)
       .then(async res => {
         setProducts(res.products);
         await saveProductsLocally(res.products).catch(() => {});
       })
-      .catch(async () => {
+      .catch(async (err: any) => {
+        const msg = String(err?.message || "");
+        // If API returned 401/unauthorized (e.g. Supabase JWT vs local secret or unauthenticated),
+        // DO NOT show generic shared/demo IndexedDB cache to the newly authenticated user.
+        if (msg.includes("401") || msg.toLowerCase().includes("unauthorized") || msg.toLowerCase().includes("authentication required")) {
+          setProducts([]);
+          return;
+        }
+
+        // Legitimate offline fallback: ONLY show products that belong to the current logged-in user
+        if (!currentUserId) {
+          setProducts([]);
+          return;
+        }
+
         const local = await loadAllProductsLocally();
+        // Strict isolation: filter by seller_id matching current user
+        const userOnly = local.filter(p => p.seller_id === currentUserId);
         const filtered = status === "ALL"
-          ? local
+          ? userOnly
           : status === "PROCESSING"
-          ? local.filter(p => p.status === "PROCESSING" || p.status === "READY_FOR_REVIEW")
-          : local.filter(p => p.status === status);
+          ? userOnly.filter(p => p.status === "PROCESSING" || p.status === "READY_FOR_REVIEW")
+          : userOnly.filter(p => p.status === status);
         filtered.sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
         setProducts(filtered);
       })
@@ -3627,7 +3673,7 @@ function Products() {
 
   useEffect(() => {
     fetchProducts(filter);
-  }, [filter]);
+  }, [filter, user?.id]);
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to remove this craft listing?")) {
